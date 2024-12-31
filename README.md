@@ -49,6 +49,6 @@ h_atom_post_processing
 # Results
 
 ## 2p_0 state
-![Video preview](movies/2s0_10ps.gif)
+[![Image Alt Text](movies/2p0_10ps.gif)](movies/2p0_10ps.gif)
 
 
