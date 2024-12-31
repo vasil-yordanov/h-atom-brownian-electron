@@ -1,18 +1,18 @@
+# Machine Specifications
+
+The simulation was tested on the following system:
+
+- **Processor**: Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz (6 Cores, 12 Threads)
+- **RAM**: 16.0 GB
+
+The timing results provided below are specific to this machine configuration
+and may vary on systems with different specifications.
+
 # Add functions directory to the path
 Assuming you are in the home directory of the project execute:
 ```Matlab
 addpath('functions');
 ```
-
-# Machine Specifications
-
-The simulation was developed and tested on the following system:
-
-- **Processor**: Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz (6 Cores, 12 Threads)
-- **RAM**: 16.0 GB
-
-The timing results provided below are specific to this machine configuration 
-and may vary on systems with different specifications.
 
 # Running the simulation
 
