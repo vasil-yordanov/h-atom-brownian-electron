@@ -48,6 +48,17 @@ h_atom_post_processing
 
 # Results
 
+**Note:**  that due to performance of the movie, we do not show detailed trajectory of the particle
+for later moments (see [plot_trajectory_3d.m](functions/plot_trajectory_3d.m)), the algorithm is:
+```
+  if ~show_all
+        % Calculate the step size, ensuring it's at least 1
+        every = max(floor(traj_points / 1e6), 1);
+        idx = 1:every:m;
+    else
+        idx = 1:m;
+    end
+```
 
 ## Brownian motion on sphere with Bohr radius
 [![Brownian motion on sphere](movies/1s0_1fs.gif)](movies/1s0_1fs.gif)
