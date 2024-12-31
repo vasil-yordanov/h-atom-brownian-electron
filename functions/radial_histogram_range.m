@@ -15,7 +15,7 @@ function [r_min, r_max] = radial_histogram_range(n, l, a_0, params_set_name)
     % Initialize default values
      % Define initial values based on quantum numbers
     if n == 1 && l == 0 % 1s orbital
-        if strcmp(params_set_name, 'fig_1')
+        if strcmp(params_set_name, '1s0_1fs')
             r_min = 0 * a_0;
             r_max = 1.5 * a_0;
         else
