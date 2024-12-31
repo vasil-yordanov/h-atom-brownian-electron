@@ -73,9 +73,7 @@ function [exp_V] = expected_V(n)
 end
 
 function [exp_E] = expected_E(n)
-    % expected_total_energy = -5.4494e-19; l=1, m=0 
     [hbar ,m_e, a_0, ~, ~, ~] = constants();
 
-    %expected_E  = - (m_e * e_charge^4) / ( 32 * pi^2 * epsilon_0^2 * hbar^2 * n^2);
     exp_E  = - hbar^2/( 2 * m_e) / (a_0^2 * n^2);
 end
