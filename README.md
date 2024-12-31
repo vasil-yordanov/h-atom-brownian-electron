@@ -48,7 +48,7 @@ h_atom_post_processing
 
 # Results
 
-**Note:**  that due to performance of the movie, we do not show detailed trajectory of the particle
+**Note:** Due to the performance of the movie, we do not show the detailed trajectory of the particle
 for later moments (see [plot_trajectory_3d.m](functions/plot_trajectory_3d.m)), the algorithm is:
 ```
   if ~show_all
