@@ -70,15 +70,15 @@ for later moments (see [plot_trajectory_3d.m](functions/plot_trajectory_3d.m)), 
 ## Brownian motion on sphere with Bohr radius
 [![Brownian motion on sphere](movies/1s0_1fs.gif)](movies/1s0_1fs.gif)
 
-## $1s_0$ state
+## $(n,l,m)=(1,0,0)$ state
 [![1s0_state](movies/1s0_1ps.gif)](movies/1s0_1ps.gif)
 
-## $2p_0$ state
+##  $(n,l,m)=(2,1,0)$ state
 [![2p0_state](movies/2p0_10ps.gif)](movies/2p0_10ps.gif)
 
-## $2p_1$ state
+## $(n,l,m)=(2,1,1)$ state
 [![2p1_state](movies/2p1_1ps.gif)](movies/2p1_1ps.gif)
 
 
-## $2s_0$ state
+## $(n,l,m)=(2,0,0)$ state
 [![2s0_state](movies/2s0_10ps.gif)](movies/2s0_10ps.gif)
