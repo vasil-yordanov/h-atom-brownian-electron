@@ -76,7 +76,7 @@ for later moments (see [plot_trajectory_3d.m](functions/plot_trajectory_3d.m)), 
 ##  $(n,l,m)=(2,1,0)$ state
 [![2p0_state](movies/2p0_10ps.gif)](movies/2p0_10ps.gif)
 
-## $(n,l,m)=(2,1,1)$ state
+## $(n,l,m)=(2,1,\pm 1)$ state. Linear combination of $\frac{1}{\sqrt{2}} ((2,1,1) + (2,1,-1)$ 
 [![2p1_state](movies/2p1_1ps.gif)](movies/2p1_1ps.gif)
 
 
