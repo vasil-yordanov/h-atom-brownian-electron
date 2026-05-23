@@ -36,11 +36,21 @@ function [n, l, m, n_steps, dt, traj_points, sigma_r_factor] = parameters(parame
         n_steps = 1e9;
         dt = 1e-20;
         traj_points = 2e8;
-    elseif strcmp(parameters_set, '2p1_1ps')
+    elseif strcmp(parameters_set, '2p_m0_1ps') || strcmp(parameters_set, '2p0_1ps')
+        n=2; l=1; m=0;
+        n_steps = 5e6;
+        dt = 10e-21;
+        traj_points = 2e6;
+    elseif strcmp(parameters_set, '2p_m1_1ps') || strcmp(parameters_set, '2p1_1ps')
         n=2; l=1; m=1;
-        n_steps = 1e8;
-        dt = 1e-20;
-        traj_points = 1e7;
+        n_steps = 2e6;
+        dt = 5e-21;
+        traj_points = 2e6;
+    elseif strcmp(parameters_set, '2p_mn1_1ps')
+        n=2; l=1; m=-1;
+        n_steps = 2e6;
+        dt = 5e-21;
+        traj_points = 2e6;
     elseif strcmp(parameters_set, '2s0_10ps')
         n=2; l=0; m=0;
         n_steps = 1e9;

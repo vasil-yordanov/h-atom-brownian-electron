@@ -12,9 +12,10 @@ function [] = plot_radial_distribution(hist_bins_r, hist_counts_r, r_values, P_a
     hold on;
     plot(r_values / a_0, P_analytic_r, 'r', 'LineWidth', 2);
     hold off;
-    xlabel('$r / a_0$', 'Interpreter', 'latex');
-    ylabel('Radial $(r)$ Distribution', 'Interpreter', 'latex');
-    legend('Simulation', 'Analytical Solution');
+    xlabel('$r / a_0$', 'Interpreter', 'latex', 'FontSize', 14);
+    ylabel('Radial $(r)$ Distribution', 'Interpreter', 'latex', 'FontSize', 14);
+    legend('Simulation', 'Analytical Solution', 'FontSize', 11);
+    set(gca, 'FontSize', 12);
     ylim([0, max(max(P_analytic_r), max(hist_counts_r_norm))*1.25]);
 end
 

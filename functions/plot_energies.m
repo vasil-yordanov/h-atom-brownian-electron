@@ -17,7 +17,7 @@ function [] = plot_energies(n, l, m, time_array, KE_radial_traj, KE_theta_traj, 
         theot_E_phi = expected_E_phi(l, m);
         yline(theot_E_phi, 'LineStyle', '-', 'Color', [0, 1, 0.7], 'LineWidth', 0.7, 'HandleVisibility', 'off');
         plot(time_array, KE_phi_traj, ...
-            'LineStyle', '-', 'Color', [0, 1, 0.7], 'LineWidth', 2, 'DisplayName', '$\left< E_\theta \right>$');
+            'LineStyle', '-', 'Color', [0, 1, 0.7], 'LineWidth', 2, 'DisplayName', '$\left< E_\phi \right>$');
     end
 
     theor_V = expected_V(n);
@@ -30,9 +30,10 @@ function [] = plot_energies(n, l, m, time_array, KE_radial_traj, KE_theta_traj, 
     plot(time_array, E_traj, ...
         'LineStyle', '-', 'Color', [1, 0, 0], 'LineWidth', 2, 'DisplayName', '$\left< E \right>$');
     hold off;
-    ylabel('Average Energies (J)');
-    xlabel('Time (s)');
-    legend('Interpreter', 'latex');
+    ylabel('Average Energies (J)', 'FontSize', 14);
+    xlabel('Time (s)', 'FontSize', 14);
+    legend('Interpreter', 'latex', 'FontSize', 11);
+    set(gca, 'FontSize', 12);
     
     if length(time_array) > 1
         xlim([0, time_array(end)]);
@@ -57,14 +58,15 @@ function [exp_E_theta] = expected_E_theta(l, m)
     [hbar, m_e, a_0, ~, ~, ~] = constants();
     mean_inv_r2 = 1/ (12 * a_0^2);
 
-    exp_E_theta = hbar^2 / (2 * m_e) * mean_inv_r2 * (2 * l^2 - 2 * l * (m - 1) - m) / 2;
+    m_abs = abs(m);
+    exp_E_theta = hbar^2 / (2 * m_e) * mean_inv_r2 * (2 * l^2 - 2 * l * (m_abs - 1) - m_abs) / 2;
 end
 
 function [exp_E_phi] = expected_E_phi(l, m)
     [hbar, m_e, a_0, ~, ~, ~] = constants();
     mean_inv_r2 = 1/ (12 * a_0^2);
 
-    exp_E_phi = hbar^2 / (2 * m_e) * mean_inv_r2 * (2 * l + 1) * m / 2;
+    exp_E_phi = hbar^2 / (2 * m_e) * mean_inv_r2 * (2 * l + 1) * abs(m) / 2;
 end
 
 function [exp_V] = expected_V(n)

@@ -10,12 +10,14 @@ end
 
 M = 1;           % number of particles
 n_frames = 1000; % Total number of video frames
+if strcmp(params_set_name, '2p_m1_1ps') || strcmp(params_set_name, '2p1_1ps') || strcmp(params_set_name, '2p_m0_1ps') || strcmp(params_set_name, '2p0_1ps') || strcmp(params_set_name, '2p_mn1_1ps')
+    n_frames = 80;
+end
 max_traj=min(n_steps, traj_points); % limit for minimal memory
 
 % Discretization Constants
 dr = 1e-15;
 dtheta = 1e-5;
-dphi = 1e-5;
 
 base_dir = strcat('data/', params_set_name);
 status = mkdir(base_dir);
@@ -33,6 +35,7 @@ frame_step = (n_steps / n_frames);
 S_KE_radial = 0;
 S_KE_theta = 0;
 S_KE_phi = 0;
+S_b_phi = 0;
 S_V = 0;
 S_E = 0;
 
@@ -41,6 +44,7 @@ S_E = 0;
 sigma = sqrt(hbar / m_e);
 
 [r, theta, phi] = initial_coordinates(n, l, m, M, a_0, params_set_name);
+phi_unwrapped = phi;
 
 time_arr = linspace(0, n_steps * dt, n_frames);
 
@@ -51,6 +55,7 @@ phi_traj = zeros(1, max_traj);
 KE_radial_traj = zeros(1, n_frames);
 KE_theta_traj = zeros(1, n_frames);
 KE_phi_traj = zeros(1, n_frames);
+b_phi_avg_traj = zeros(1, n_frames);
 V_traj = zeros(1, n_frames);
 E_traj = zeros(1, n_frames);
 
@@ -63,7 +68,6 @@ epsilon_r = 1e-4 * a_0;
 epsilon_theta = 1e-7;
 epsilon_R = 1e-7;
 epsilon_Y_theta = 1e-7;
-epsilon_Y_phi = 1e-7;
 
 % Histogram Parameters for r
 [r_min, r_max] = radial_histogram_range(n, l, a_0, params_set_name);
@@ -100,20 +104,22 @@ P_theta_analytic = 2 * pi * sin(theta_values) .* abs(Y_theta_analytic).^2;
 
 % Precompute Analytic Azimuthal Distribution
 phi_values = linspace(phi_min, phi_max, 1000);
-Y_phi_analytic = angular_wavefunction_phi(phi_values, m);
-P_phi_analytic = abs(Y_phi_analytic).^2 / (2 * pi);
+P_phi_analytic = ones(size(phi_values)) / (2 * pi);
 
 % Initialize Video Writer
 v = VideoWriter(video_filename, 'MPEG-4');
 v.FrameRate = 10;
+if strcmp(params_set_name, '2p_m1_1ps') || strcmp(params_set_name, '2p1_1ps') || strcmp(params_set_name, '2p_m0_1ps') || strcmp(params_set_name, '2p0_1ps') || strcmp(params_set_name, '2p_mn1_1ps')
+    v.FrameRate = 24;
+end
 open(v);
 
 frame_index = 1;
 startTime = datetime('now');
 fprintf('Start time: %s\n', startTime);
 
-fig = figure;
-        
+fig = figure('Units', 'pixels', 'Position', [50, 50, 2100, 900]);
+
 tic;
 for i = 1:n_steps
     % Generate Gaussian Increments for Radial Component (r) of Brownian Motion
@@ -129,20 +135,20 @@ for i = 1:n_steps
     % Handle R_safe to Prevent Division by Zero
     R_safe = max(abs(R), epsilon_R) .* (1 - 2 * (R < 0)); % sign(R);
 
-    % Compute Radial Drift Velocity
-    v_r_drift = (hbar / m_e) * (dR_dr ./ R_safe);
-    v_r_curv = (hbar / m_e) * (1 ./ r_safe);
+    % Compute the physical forward drift and the geometric spherical drift
+    b_r_drift = (hbar / m_e) * (dR_dr ./ R_safe);
+    mu_r_curv = (hbar / m_e) * (1 ./ r_safe);
     
     % Limit the drift velocity to ensure polar energy convergence
-    v_r_drift_idx = find(abs(v_r_drift) > c);
-    v_r_drift(v_r_drift_idx) = c * sign(v_r_drift(v_r_drift_idx));
+    b_r_drift_idx = find(abs(b_r_drift) > c);
+    b_r_drift(b_r_drift_idx) = c * sign(b_r_drift(b_r_drift_idx));
 
     % Limit the drift velocity (due to curviture) to ensure radial energy convergence
-    v_r_curv_idx = find(abs(v_r_curv) > c);
-    v_r_curv(v_r_curv_idx) = c * sign(v_r_curv(v_r_curv_idx));
+    mu_r_curv_idx = find(abs(mu_r_curv) > c);
+    mu_r_curv(mu_r_curv_idx) = c * sign(mu_r_curv(mu_r_curv_idx));
 
     % Update the Radial Position
-    r = r + (v_r_curv + v_r_drift) .* dt + dW_r;
+    r = r + (mu_r_curv + b_r_drift) .* dt + dW_r;
 
     % Reflective Boundary at r = 0
     r = abs(r);
@@ -163,21 +169,21 @@ for i = 1:n_steps
     % Handle Y_theta_safe to Prevent Division by Zero
     Y_theta_safe = max(abs(Y_theta), epsilon_Y_theta) .* (1 - 2 * (Y_theta < 0)); % sign(Y_theta);
 
-    % Compute Polar Drift Velocity
-    v_theta_drift = (hbar / m_e) * (dY_theta_dtheta ./ Y_theta_safe) ./ r_safe;
+    % Compute Polar Forward Drift
+    b_theta_drift = (hbar / m_e) * (dY_theta_dtheta ./ Y_theta_safe) ./ r_safe;
 
     % Limit the drift velocity to ensure polar energy convergence
-    v_theta_drift_idx = find(abs(v_theta_drift) > c);
-    v_theta_drift(v_theta_drift_idx) = c * sign(v_theta_drift(v_theta_drift_idx));
+    b_theta_drift_idx = find(abs(b_theta_drift) > c);
+    b_theta_drift(b_theta_drift_idx) = c * sign(b_theta_drift(b_theta_drift_idx));
 
-    v_theta_curv = (hbar / m_e) * (cot(theta_safe) / 2 ) ./ r_safe;
+    mu_theta_curv = (hbar / m_e) * (cot(theta_safe) / 2 ) ./ r_safe;
 
     % Limit the drift velocity (due to curviture) to ensure polar energy convergence
-    v_theta_curv_idx = find(abs(v_theta_curv) > c);
-    v_theta_curv(v_theta_curv_idx) = c * sign(v_theta_curv(v_theta_curv_idx));
+    mu_theta_curv_idx = find(abs(mu_theta_curv) > c);
+    mu_theta_curv(mu_theta_curv_idx) = c * sign(mu_theta_curv(mu_theta_curv_idx));
    
     % Update the Polar Angle
-    theta = theta + (1./ r_safe) .* ((v_theta_curv + v_theta_drift) .* dt + dW_theta);
+    theta = theta + (1./ r_safe) .* ((mu_theta_curv + b_theta_drift) .* dt + dW_theta);
   
     % Accumulate Histogram Counts for theta
     hist_counts_theta = hist_counts_theta + histcounts(theta,  hist_bins_theta);
@@ -185,25 +191,18 @@ for i = 1:n_steps
     % Generate Random Steps (Gaussian Increments for Brownian Motion)
     dW_phi = (sigma * sqrt(dt)) .* randn(M, 1);
 
-    % Compute Azimuthal Wavefunction and Its Derivative at phi
-    Y_phi = angular_wavefunction_phi(phi, m);
-    dY_phi_dphi = derivative(@(phi) angular_wavefunction_phi(phi, m), phi, dphi);
-
-    % Handle Y_phi_safe to Prevent Division by Zero
-    Y_phi_safe = max(abs(Y_phi), epsilon_Y_phi) .* (1 - 2 * (Y_phi < 0)); % sign(Y_phi);
-
-    % Compute Azimuthal Drift Velocity
-    v_phi_drift = (hbar / m_e) * (dY_phi_dphi ./ Y_phi_safe) ./ (r_safe .* sin(theta_safe));
+    % Compute the azimuthal forward drift from the phase Arg(Phi_m)=m*phi
+    b_phi_drift = (hbar / m_e) * m ./ (r_safe .* sin(theta_safe));
 
     % Limit the drift velocity to ensure polar energy convergence
-    v_phi_drift_idx = find(abs(v_phi_drift) > c);
-    v_phi_drift(v_phi_drift_idx) = c * sign(v_phi_drift(v_phi_drift_idx));
+    b_phi_drift_idx = find(abs(b_phi_drift) > c);
+    b_phi_drift(b_phi_drift_idx) = c * sign(b_phi_drift(b_phi_drift_idx));
 
     % Update Azimuthal Angle
-    phi = phi + 1./(r_safe .* sin(theta_safe)) .* (v_phi_drift .* dt + dW_phi);
+    phi_unwrapped = phi_unwrapped + 1./(r_safe .* sin(theta_safe)) .* (b_phi_drift .* dt + dW_phi);
 
     % Adjust phi to be Within [0, 2*pi]
-    phi = mod(phi, 2 * pi);
+    phi = mod(phi_unwrapped, 2 * pi);
 
     % Accumulate Histogram Counts for phi
     hist_counts_phi = hist_counts_phi + histcounts(phi, hist_bins_phi);
@@ -215,10 +214,10 @@ for i = 1:n_steps
         phi_traj(i) = phi;
     end
 
-    % Compute Kinetic Energy Using Drift Velocities
-    KE_radial = 0.5 * m_e *  (v_r_drift.^2); 
-    KE_theta = 0.5 * m_e * (v_theta_drift.^2); 
-    KE_phi = 0.5 * m_e * (v_phi_drift.^2); 
+    % Compute kinetic energy using the physical forward drift components
+    KE_radial = 0.5 * m_e *  (b_r_drift.^2); 
+    KE_theta = 0.5 * m_e * (b_theta_drift.^2); 
+    KE_phi = 0.5 * m_e * (b_phi_drift.^2); 
 
     % Compute Potential Energy
     V = -e_charge^2 ./ (4 * pi * epsilon_0 * r_safe);
@@ -230,6 +229,7 @@ for i = 1:n_steps
     S_KE_radial = S_KE_radial + sum(KE_radial);
     S_KE_theta = S_KE_theta + sum(KE_theta);
     S_KE_phi = S_KE_phi + sum(KE_phi);
+    S_b_phi = S_b_phi + sum(b_phi_drift);
     S_V = S_V + sum(V);
     S_E = S_E + sum(E);
 
@@ -240,6 +240,7 @@ for i = 1:n_steps
         KE_radial_traj(frame_index) = S_KE_radial /  i;
         KE_theta_traj(frame_index) = S_KE_theta /  i;
         KE_phi_traj(frame_index) = S_KE_phi / i;
+        b_phi_avg_traj(frame_index) = S_b_phi / i;
         V_traj(frame_index) = S_V / i;
         E_traj(frame_index) = S_E / i;
         hist_counts_r_traj(frame_index, :) = hist_counts_r; 
@@ -255,31 +256,36 @@ for i = 1:n_steps
         dev_arr_phi(frame_index) = compute_distributions_deviation(...
                 hist_bins_phi, hist_counts_phi, phi_values, P_phi_analytic);        
         
-        clf;
-        set(gcf, 'Position', [50, 50, 1600, 900]);
-        subplot(2,3,1);
+        clf(fig);
+        subplot(2,4,1);
         plot_radial_distribution(hist_bins_r, hist_counts_r, r_values, P_analytic_r);
-        subplot(2,3,2);
+        subplot(2,4,2);
         plot_polar_distribution(hist_bins_theta, hist_counts_theta, theta_values, P_theta_analytic);
-        subplot(2,3,3);
+        subplot(2,4,3);
         plot_azimuthal_distribution(hist_bins_phi, hist_counts_phi, phi_values, P_phi_analytic);
-        subplot(2,3,4);
+        subplot(2,4,4);
+        plot_trajectory_3d(n, l, r_traj, theta_traj, phi_traj, a_0, i, params_set_name);
 
         idx = 1:frame_index;
+        subplot(2,4,5);
         plot_distributions_deviation(time_arr(idx), dev_arr_R(idx), dev_arr_theta(idx), dev_arr_phi(idx));
-        subplot(2,3,5);
+        subplot(2,4,6);
         plot_energies(n, l, m, time_arr(idx), KE_radial_traj(idx), ...
             KE_theta_traj(idx), KE_phi_traj(idx), V_traj(idx), E_traj(idx));
 
-        subplot(2,3,6);
-        plot_trajectory_3d(n, l, r_traj, theta_traj, phi_traj, a_0, i, params_set_name);
+        subplot(2,4,7);
+        plot_azimuthal_current(time_arr(idx), b_phi_avg_traj(idx), n, l, m);
+
+        subplot(2,4,8);
+        plot_trajectory_xy(n, l, r_traj, theta_traj, phi_traj, a_0, i, params_set_name);
 
         annotation_text = sprintf('t = %.2e s', time_arr(frame_index));
         annotation('textbox', [0.02, 0.95, 0.1, 0.05], 'String', annotation_text, ...
         'Units', 'normalized', 'HorizontalAlignment', 'left', 'VerticalAlignment', 'top', ...
         'FontSize', 12, 'FontWeight', 'bold', 'EdgeColor', 'none');
 
-        frame = getframe(gcf);
+        drawnow;
+        frame = getframe(fig);
         writeVideo(v, frame);
         frame_index = frame_index + 1;
     end

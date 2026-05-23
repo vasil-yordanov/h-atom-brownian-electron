@@ -10,10 +10,11 @@ function [] = plot_polar_distribution(hist_bins_theta, hist_counts_theta, theta_
     plot(theta_values, P_theta_analytic, 'r', 'LineWidth', 2);
     hold off;
    
-    xlabel('$\theta$ (radians)', 'Interpreter', 'latex');
-    ylabel('Polar $(\theta)$ Distribution', 'Interpreter', 'latex');
+    xlabel('$\theta$ (radians)', 'Interpreter', 'latex', 'FontSize', 14);
+    ylabel('Polar $(\theta)$ Distribution', 'Interpreter', 'latex', 'FontSize', 14);
     
-    legend('Simulation', 'Analytical Solution');
+    legend('Simulation', 'Analytical Solution', 'FontSize', 11);
+    set(gca, 'FontSize', 12);
 
     ylim([0, max(max(P_theta_analytic), max(hist_counts_theta_norm))*1.25]);
 end

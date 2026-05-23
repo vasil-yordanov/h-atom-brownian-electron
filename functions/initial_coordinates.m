@@ -32,7 +32,7 @@ function [r_init, theta_init, phi_init] = initial_coordinates(n, l, m, M, a_0, p
         r_init = 4 * a_0 * ones(M, 1);
         theta_init = pi / 3 * ones(M, 1);
         phi_init = zeros(M, 1);
-    elseif n == 2 && l == 1 && m == 1 % 2p1 orbital
+    elseif n == 2 && l == 1 && abs(m) == 1 % 2p|1| orbital
         r_init = 4 * a_0 * ones(M, 1);
         theta_init = pi / 3 * ones(M, 1);
         phi_init = zeros(M, 1);

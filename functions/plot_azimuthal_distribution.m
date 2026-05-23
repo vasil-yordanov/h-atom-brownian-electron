@@ -9,9 +9,10 @@ function [] = plot_azimuthal_distribution(hist_bins_phi, hist_counts_phi, phi_va
     hold on;
     plot(phi_values, P_phi_analytic, 'r', 'LineWidth', 2);
     hold off;
-    xlabel('$\phi$ (radians)', 'Interpreter', 'latex');
-    ylabel('Azimuthal $(\phi)$ Distribution', 'Interpreter', 'latex');
-    legend('Simulation', 'Analytic Solution');
+    xlabel('$\phi$ (radians)', 'Interpreter', 'latex', 'FontSize', 14);
+    ylabel('Azimuthal $(\phi)$ Distribution', 'Interpreter', 'latex', 'FontSize', 14);
+    legend('Simulation', 'Analytic Solution', 'FontSize', 11);
+    set(gca, 'FontSize', 12);
     ylim([0, max(max(P_phi_analytic), max(hist_counts_phi_norm))*1.25]);
 end
 

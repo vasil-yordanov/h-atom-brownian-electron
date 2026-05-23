@@ -23,6 +23,7 @@ set(fig, 'DefaultAxesFontSize', defaultFontSize, ...
 %%%%%%%%%%%%%%%%%%%%%
 
 load(fullfile(load_base_path, '1s0_1fs/1s0_1fs.mat')); % fig_1
+recompute_analytic_distributions;
 
 clf;
 i=20000;
@@ -42,6 +43,7 @@ fprintf('%s -> t=%.1f fs\n', pdf_name, i*dt/1e-15);
 
 %%%%%%%%%%%%%%%%%%%%%%
 load(fullfile(load_base_path, '1s0_1ps/1s0_1ps.mat'));
+recompute_analytic_distributions;
 
 clf;
 i=500;
@@ -73,6 +75,7 @@ fprintf('%s -> t=%.1f fs\n', pdf_name, i*dt/1e-15);
 
 %%%%%%%%%%%%%%%%%%%%%%
 load(fullfile(load_base_path, '2p0_10ps/2p0_10ps.mat'));
+recompute_analytic_distributions;
 
 clf;
 i=500;
@@ -102,7 +105,7 @@ exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'vector
 fprintf('%s -> t=%.1f fs\n', pdf_name, time_arr(1,end)/1e-15);
 
 clf;
-pdf_name='2p0_1ps-energies.pdf';
+pdf_name='2p_m0_1ps-energies.pdf';
 idx=1:size(time_arr,2)/10;
 plot_energies(n, l, m, time_arr(idx), KE_radial_traj(idx), ...
     KE_theta_traj(idx), KE_phi_traj(idx), V_traj(idx), E_traj(idx));
@@ -142,7 +145,62 @@ fprintf('%s -> t=%.1f fs\n', pdf_name, i*dt/1e-15);
 
 %%%%%%%%%%%%%%%%%%%%%
 
+load(fullfile(load_base_path, '2p_m0_1ps/2p_m0_1ps.mat'));
+recompute_analytic_distributions;
+
+clf;
+pdf_name='2p_m0_1ps-energies.pdf';
+plot_energies(n, l, m, time_arr, KE_radial_traj, KE_theta_traj, KE_phi_traj, V_traj, E_traj);
+exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'vector');
+fprintf('%s -> t=%.1f fs\n', pdf_name, time_arr(1,end)/1e-15);
+
+clf;
+i=max(2, min(size(r_traj,2), 2000000));
+pdf_name='2p_m0_1ps-cloud_xy.pdf';
+plot_trajectory_3d(n, l, r_traj, theta_traj, phi_traj, a_0, i, '2p_m0_1ps', true);
+exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'image');
+fprintf('%s -> t=%.1f fs\n', pdf_name, i*dt/1e-15);
+
+%%%%%%%%%%%%%%%%%%%%%
+
+load(fullfile(load_base_path, '2p_m1_1ps/2p_m1_1ps.mat'));
+recompute_analytic_distributions;
+
+clf;
+pdf_name='2p_m1_1ps-energies.pdf';
+plot_energies(n, l, m, time_arr, KE_radial_traj, KE_theta_traj, KE_phi_traj, V_traj, E_traj);
+exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'vector');
+fprintf('%s -> t=%.1f fs\n', pdf_name, time_arr(1,end)/1e-15);
+
+clf;
+i=max(2, min(size(r_traj,2), 2000000));
+pdf_name='2p_m1_1ps-cloud_xy.pdf';
+plot_trajectory_3d(n, l, r_traj, theta_traj, phi_traj, a_0, i, '2p_m1_1ps', true);
+exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'image');
+fprintf('%s -> t=%.1f fs\n', pdf_name, i*dt/1e-15);
+
+%%%%%%%%%%%%%%%%%%%%%
+
+load(fullfile(load_base_path, '2p_mn1_1ps/2p_mn1_1ps.mat'));
+recompute_analytic_distributions;
+
+clf;
+pdf_name='2p_mn1_1ps-energies.pdf';
+plot_energies(n, l, m, time_arr, KE_radial_traj, KE_theta_traj, KE_phi_traj, V_traj, E_traj);
+exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'vector');
+fprintf('%s -> t=%.1f fs\n', pdf_name, time_arr(1,end)/1e-15);
+
+clf;
+i=max(2, min(size(r_traj,2), 2000000));
+pdf_name='2p_mn1_1ps-cloud_xy.pdf';
+plot_trajectory_3d(n, l, r_traj, theta_traj, phi_traj, a_0, i, '2p_mn1_1ps', true);
+exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'image');
+fprintf('%s -> t=%.1f fs\n', pdf_name, i*dt/1e-15);
+
+%%%%%%%%%%%%%%%%%%%%%
+
 load(fullfile(load_base_path, '2s0_10ps/2s0_10ps.mat'));
+recompute_analytic_distributions;
 
 clf;
 i=30;
@@ -177,3 +235,19 @@ pdf_name='2s0_10ps-energies.pdf';
 plot_energies(n, l, m, time_arr, KE_radial_traj, KE_theta_traj, KE_phi_traj, V_traj, E_traj);
 exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'vector');
 fprintf('%s -> t=%.1f fs\n', pdf_name, time_arr(1,end)/1e-15);
+
+function recompute_analytic_distributions
+    R_analytic = radial_wavefunction(r_values, n, l);
+    P_analytic_r = r_values.^2 .* abs(R_analytic).^2;
+
+    Y_theta_analytic = angular_wavefunction_theta(theta_values, l, m);
+    P_theta_analytic = 2 * pi * sin(theta_values) .* abs(Y_theta_analytic).^2;
+
+    P_phi_analytic = ones(size(phi_values)) / (2 * pi);
+
+    assignin('caller', 'R_analytic', R_analytic);
+    assignin('caller', 'P_analytic_r', P_analytic_r);
+    assignin('caller', 'Y_theta_analytic', Y_theta_analytic);
+    assignin('caller', 'P_theta_analytic', P_theta_analytic);
+    assignin('caller', 'P_phi_analytic', P_phi_analytic);
+end
