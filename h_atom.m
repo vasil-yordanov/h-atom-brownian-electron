@@ -64,7 +64,7 @@ elseif independent_random_design
     output_run_name = sprintf('%s_independent_seed_%d', params_set_name, random_seed);
 end
 % Tag the output folder/files with the dt value so each dt sweep point is saved
-% separately instead of overwriting the baseline run's data directory. The dt
+% separately instead of overwriting the baseline run data directory. The dt
 % is expressed in zeptoseconds (1 zs = 1e-21 s) for a readable tag, with 'p' in
 % place of any decimal point, e.g. dt=1e-20 s -> '_dt_10zs', 5e-22 s -> '_dt_0p5zs'.
 if exist('dt_override', 'var') && ~isempty(dt_override)
@@ -72,12 +72,12 @@ if exist('dt_override', 'var') && ~isempty(dt_override)
     output_run_name = sprintf('%s_dt_%szs', output_run_name, dt_zs_str);
 end
 make_live_plots = true;
-% By default the first 8 subplots (radial/polar/azimuthal histograms,
+% By default the 8 dashboard subplots (radial/polar/azimuthal histograms,
 % trajectory views, distribution deviation, energies-vs-time, azimuthal
 % current) use a single trajectory -- matching the original M = 1
-% behavior. The row-3 per-trajectory energy histograms and the end-of-run
-% diagnostic always use all M trajectories. Set to false to pool all M
-% particles into the main plots as well (cross-particle means + SEM bands).
+% behavior. The end-of-run per-trajectory energy diagnostic always uses all
+% M trajectories. Set to false to pool all M particles into the main plots
+% as well (cross-particle means + SEM bands).
 single_traj_main_plots = true;
 n_frames = 1000; % Total number of video frames
 if strcmp(params_set_name, '2p_m1_1ps') || strcmp(params_set_name, '2p1_1ps') || strcmp(params_set_name, '2p_m0_1ps') || strcmp(params_set_name, '2p0_1ps') || strcmp(params_set_name, '2p_mn1_1ps')
@@ -398,7 +398,7 @@ for i = i_start:n_steps
         end
     end
 
-    % Store only the first particle's trajectory for 3D visualisation.
+    % Store only the first particle trajectory for 3D visualisation.
     if make_live_plots && i <= max_traj
         r_traj(i)     = r(1);
         theta_traj(i) = theta(1);
@@ -433,9 +433,9 @@ for i = i_start:n_steps
         S_V         = S_V         + mean(V);
         S_E         = S_E         + mean(E);
     end
-    % Per-particle accumulators (size [M,1]) for end-of-run SEM and for
-    % the row-3 live per-trajectory diagnostic histograms. Always on,
-    % independent of single_traj_main_plots.
+    % Per-particle accumulators (size [M,1]) for the end-of-run per-trajectory
+    % SEM/median energy diagnostic. Always on, independent of
+    % single_traj_main_plots.
     S_KE_radial_M = S_KE_radial_M + KE_radial;
     S_KE_theta_M  = S_KE_theta_M  + KE_theta;
     S_KE_phi_M    = S_KE_phi_M    + KE_phi;
@@ -541,18 +541,18 @@ for i = i_start:n_steps
                        'Location', 'northeast', 'Box', 'off');
                 grid on;
             else
-                subplot(3,4,1);
+                subplot(2,4,1);
                 plot_radial_distribution(hist_bins_r, hist_counts_r, r_values, P_analytic_r);
-                subplot(3,4,2);
+                subplot(2,4,2);
                 plot_polar_distribution(hist_bins_theta, hist_counts_theta, theta_values, P_theta_analytic);
-                subplot(3,4,3);
+                subplot(2,4,3);
                 plot_azimuthal_distribution(hist_bins_phi, hist_counts_phi, phi_values, P_phi_analytic);
-                subplot(3,4,4);
+                subplot(2,4,4);
                 plot_trajectory_3d(n, l, r_traj, theta_traj, phi_traj, a_0, i, params_set_name);
 
-                subplot(3,4,5);
+                subplot(2,4,5);
                 plot_distributions_deviation(time_arr(idx), dev_arr_R(idx), dev_arr_theta(idx), dev_arr_phi(idx));
-                subplot(3,4,6);
+                subplot(2,4,6);
                 if single_traj_main_plots
                     plot_energies(n, l, m, time_arr(idx), KE_radial_traj(idx), ...
                         KE_theta_traj(idx), KE_phi_traj(idx), V_traj(idx), E_traj(idx));
@@ -562,26 +562,11 @@ for i = i_start:n_steps
                         V_traj_M(:, idx), E_traj_M(:, idx));
                 end
 
-                subplot(3,4,7);
+                subplot(2,4,7);
                 plot_azimuthal_current(time_arr(idx), b_phi_avg_traj(idx), n, l, m);
 
-                subplot(3,4,8);
+                subplot(2,4,8);
                 plot_trajectory_xy(n, l, r_traj, theta_traj, phi_traj, a_0, i, params_set_name);
-
-                % Row 3: per-trajectory energy summaries across the M
-                % independent trajectories.
-                subplot(3,4,9);
-                plot_per_traj_energy_summary_panel(S_KE_radial_M / i, ...
-                    '$\left< E_r \right>$', ref_energies.E_r);
-                subplot(3,4,10);
-                plot_per_traj_energy_summary_panel(S_KE_theta_M / i, ...
-                    '$\left< E_\theta \right>$', ref_energies.E_theta);
-                subplot(3,4,11);
-                plot_per_traj_energy_summary_panel(S_V_M / i, ...
-                    '$\left< V \right>$', ref_energies.V);
-                subplot(3,4,12);
-                plot_per_traj_energy_summary_panel(S_E_M / i, ...
-                    '$\left< E \right>$', ref_energies.E);
             end
 
             annotation_text = sprintf('t = %.2e s', time_arr(frame_index));
@@ -677,21 +662,3 @@ fprintf('===============================================================\n');
 resume_from_workspace = false;
 resume_requested = false;
 save(fullfile(base_dir, strcat(output_run_name,'.mat')), '-v7.3');
-
-function plot_per_traj_energy_summary_panel(values, label, ref_value)
-    mean_value = mean(values);
-    sem_value = std(values) / sqrt(length(values));
-    median_value = median(values);
-    iqr_value = quantile(values, 0.75) - quantile(values, 0.25);
-
-    axis off;
-    title(label, 'Interpreter', 'latex');
-    text(0.05, 0.78, sprintf('mean = %.4e J', mean_value), 'Units', 'normalized');
-    text(0.05, 0.60, sprintf('SEM = %.2e J', sem_value), 'Units', 'normalized');
-    text(0.05, 0.42, sprintf('median = %.4e J', median_value), 'Units', 'normalized');
-    text(0.05, 0.24, sprintf('IQR = %.2e J', iqr_value), 'Units', 'normalized');
-    if ~isnan(ref_value)
-        rel_error = abs(mean_value - ref_value) / abs(ref_value);
-        text(0.05, 0.06, sprintf('rel.err = %.3g', rel_error), 'Units', 'normalized');
-    end
-end
