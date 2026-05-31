@@ -1,4 +1,4 @@
-clear;
+clearvars -except params_set_name;
 
 export_base_path = 'figures';
 load_base_path = 'data';
@@ -10,6 +10,11 @@ if status
 else
     disp(['Failed to create directory "', export_base_path, '".']);
     exit;
+end
+
+if exist('params_set_name', 'var') && is_scan_parameter_set(params_set_name)
+    maybe_analyse_cutoff_scan(params_set_name, export_base_path);
+    return;
 end
 
 fig = figure;
@@ -107,8 +112,9 @@ fprintf('%s -> t=%.1f fs\n', pdf_name, time_arr(1,end)/1e-15);
 clf;
 pdf_name='2p_m0_1ps-energies.pdf';
 idx=1:size(time_arr,2)/10;
-plot_energies(n, l, m, time_arr(idx), KE_radial_traj(idx), ...
-    KE_theta_traj(idx), KE_phi_traj(idx), V_traj(idx), E_traj(idx));
+plot_energies_with_bands(n, l, m, time_arr(idx), ...
+    KE_radial_traj_M(:, idx), KE_theta_traj_M(:, idx), KE_phi_traj_M(:, idx), ...
+    V_traj_M(:, idx), E_traj_M(:, idx));
 exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'vector');
 fprintf('%s -> t=%.1f fs\n', pdf_name, time_arr(1,end/10)/1e-15);
 
@@ -150,7 +156,8 @@ recompute_analytic_distributions;
 
 clf;
 pdf_name='2p_m0_1ps-energies.pdf';
-plot_energies(n, l, m, time_arr, KE_radial_traj, KE_theta_traj, KE_phi_traj, V_traj, E_traj);
+plot_energies_with_bands(n, l, m, time_arr, ...
+    KE_radial_traj_M, KE_theta_traj_M, KE_phi_traj_M, V_traj_M, E_traj_M);
 exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'vector');
 fprintf('%s -> t=%.1f fs\n', pdf_name, time_arr(1,end)/1e-15);
 
@@ -168,7 +175,8 @@ recompute_analytic_distributions;
 
 clf;
 pdf_name='2p_m1_1ps-energies.pdf';
-plot_energies(n, l, m, time_arr, KE_radial_traj, KE_theta_traj, KE_phi_traj, V_traj, E_traj);
+plot_energies_with_bands(n, l, m, time_arr, ...
+    KE_radial_traj_M, KE_theta_traj_M, KE_phi_traj_M, V_traj_M, E_traj_M);
 exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'vector');
 fprintf('%s -> t=%.1f fs\n', pdf_name, time_arr(1,end)/1e-15);
 
@@ -186,7 +194,8 @@ recompute_analytic_distributions;
 
 clf;
 pdf_name='2p_mn1_1ps-energies.pdf';
-plot_energies(n, l, m, time_arr, KE_radial_traj, KE_theta_traj, KE_phi_traj, V_traj, E_traj);
+plot_energies_with_bands(n, l, m, time_arr, ...
+    KE_radial_traj_M, KE_theta_traj_M, KE_phi_traj_M, V_traj_M, E_traj_M);
 exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'vector');
 fprintf('%s -> t=%.1f fs\n', pdf_name, time_arr(1,end)/1e-15);
 
@@ -232,7 +241,8 @@ fprintf('%s -> t=%.1f fs\n', pdf_name, time_arr(1,end)/1e-15);
 
 clf;
 pdf_name='2s0_10ps-energies.pdf';
-plot_energies(n, l, m, time_arr, KE_radial_traj, KE_theta_traj, KE_phi_traj, V_traj, E_traj);
+plot_energies_with_bands(n, l, m, time_arr, ...
+    KE_radial_traj_M, KE_theta_traj_M, KE_phi_traj_M, V_traj_M, E_traj_M);
 exportgraphics(fig, fullfile(export_base_path, pdf_name), 'ContentType', 'vector');
 fprintf('%s -> t=%.1f fs\n', pdf_name, time_arr(1,end)/1e-15);
 
@@ -250,4 +260,37 @@ function recompute_analytic_distributions
     assignin('caller', 'Y_theta_analytic', Y_theta_analytic);
     assignin('caller', 'P_theta_analytic', P_theta_analytic);
     assignin('caller', 'P_phi_analytic', P_phi_analytic);
+end
+
+function tf = is_scan_parameter_set(params_set_name)
+    tf = ~isempty(regexp(params_set_name, '^(2p0|2s0)_scan_vmax_[0-9]+p[0-9]+c$', 'once'));
+end
+
+function maybe_analyse_cutoff_scan(params_set_name, export_dir)
+    tokens = regexp(params_set_name, '^(2p0|2s0)_scan_vmax_', 'tokens', 'once');
+    if isempty(tokens)
+        return;
+    end
+    state_label = tokens{1};
+    suffixes = {'0p01c', '0p03c', '0p1c', '0p3c', '1p0c', '2p0c', '3p0c'};
+
+    missing = {};
+    for k = 1:length(suffixes)
+        run_name = [state_label '_scan_vmax_' suffixes{k}];
+        mat_path = fullfile('data', run_name, [run_name '.mat']);
+        if ~exist(mat_path, 'file')
+            missing{end + 1} = run_name; %#ok<AGROW>
+        end
+    end
+
+    if isempty(missing)
+        analyse_cutoff_scan(state_label, export_dir);
+    else
+        fprintf('Cutoff scan for %s is not complete yet (%d/%d files present).\n', ...
+                state_label, length(suffixes) - length(missing), length(suffixes));
+        fprintf('Missing run(s):\n');
+        for k = 1:length(missing)
+            fprintf('  %s\n', missing{k});
+        end
+    end
 end
