@@ -24,32 +24,42 @@ addpath('functions');
 # Running the simulation
 
 ```Matlab
+% Each simulation starts from a clean workspace. The search path persists
+% across `clear`, but re-adding it keeps each block independently runnable.
+
 % The simulation below will took around 15 min. t_final=1e-15 s.
+clear; addpath('functions');
 params_set_name='1s0_1fs';
 h_atom
 
 % The simulation below tooks around 50 minutes. t_final=1e-12 s.
+clear; addpath('functions');
 params_set_name='1s0_1ps';
 h_atom
 
 % The simulation below tooks around 6 hours. t_final=1e-11 s
+clear; addpath('functions');
 params_set_name='2p0_10ps';
 h_atom
 
 % The simulation below tooks around 6 hours. t_final=1e-11 s
+clear; addpath('functions');
 params_set_name='2s0_10ps';
 h_atom
 
 % Optional
 % The simulation below tooks around 50 min. t_final=1e-12 s
+clear; addpath('functions');
 params_set_name='2p_m1_1ps';
 h_atom
 
 % Matching comparison case with m=0
+clear; addpath('functions');
 params_set_name='2p_m0_1ps';
 h_atom
 
 % Same density as m=1 but opposite circulation
+clear; addpath('functions');
 params_set_name='2p_mn1_1ps';
 h_atom
 ```
@@ -57,68 +67,81 @@ h_atom
 # Running the cutoff-velocity sweep
 
 The cutoff sweep scans the velocity cap `v_max/c` for the nodal states
-`(n,l,m)=(2,1,0)` and `(2,0,0)`.  The scan runs use `M=5` trajectories,
-`dt=1e-20 s`, and `n_steps=1e9` by default.  They store the energy-error
+`(n,l,m)=(2,1,0)` and `(2,0,0)`.  The scan runs use `M=100` trajectories and
+`traj_points=1`; the integration step `dt` is given explicitly in the set name
+(here `10zs` = `1e-20 s`, giving `n_steps=1e9`).  They store the energy-error
 time series, nodal crossing counts, occupation fractions, and cutoff
 engagement fractions in the output `.mat` file.
 
 First run a short smoke test:
 
 ```Matlab
-addpath('functions');
-params_set_name='test_scan_vmax_1p0c';
+clear; addpath('functions');
+params_set_name='test_scan_vmax_1p0c_dt_10zs';
 h_atom
 ```
 
 Then run the `(2,1,0)` sweep one point at a time:
 
 ```Matlab
-addpath('functions');
-params_set_name='2p0_scan_vmax_0p01c';
+clear; addpath('functions');
+params_set_name='2p0_scan_vmax_0p01c_dt_10zs';
 h_atom
 
-params_set_name='2p0_scan_vmax_0p03c';
+clear; addpath('functions');
+params_set_name='2p0_scan_vmax_0p03c_dt_10zs';
 h_atom
 
-params_set_name='2p0_scan_vmax_0p1c';
+clear; addpath('functions');
+params_set_name='2p0_scan_vmax_0p1c_dt_10zs';
 h_atom
 
-params_set_name='2p0_scan_vmax_0p3c';
+clear; addpath('functions');
+params_set_name='2p0_scan_vmax_0p3c_dt_10zs';
 h_atom
 
-params_set_name='2p0_scan_vmax_1p0c';
+clear; addpath('functions');
+params_set_name='2p0_scan_vmax_1p0c_dt_10zs';
 h_atom
 
-params_set_name='2p0_scan_vmax_2p0c';
+clear; addpath('functions');
+params_set_name='2p0_scan_vmax_2p0c_dt_10zs';
 h_atom
 
-params_set_name='2p0_scan_vmax_3p0c';
+clear; addpath('functions');
+params_set_name='2p0_scan_vmax_3p0c_dt_10zs';
 h_atom
 ```
 
 Run the `(2,0,0)` sweep one point at a time:
 
 ```Matlab
-addpath('functions');
-params_set_name='2s0_scan_vmax_0p01c';
+clear; addpath('functions');
+params_set_name='2s0_scan_vmax_0p01c_dt_10zs';
 h_atom
 
-params_set_name='2s0_scan_vmax_0p03c';
+clear; addpath('functions');
+params_set_name='2s0_scan_vmax_0p03c_dt_10zs';
 h_atom
 
-params_set_name='2s0_scan_vmax_0p1c';
+clear; addpath('functions');
+params_set_name='2s0_scan_vmax_0p1c_dt_10zs';
 h_atom
 
-params_set_name='2s0_scan_vmax_0p3c';
+clear; addpath('functions');
+params_set_name='2s0_scan_vmax_0p3c_dt_10zs';
 h_atom
 
-params_set_name='2s0_scan_vmax_1p0c';
+clear; addpath('functions');
+params_set_name='2s0_scan_vmax_1p0c_dt_10zs';
 h_atom
 
-params_set_name='2s0_scan_vmax_2p0c';
+clear; addpath('functions');
+params_set_name='2s0_scan_vmax_2p0c_dt_10zs';
 h_atom
 
-params_set_name='2s0_scan_vmax_3p0c';
+clear; addpath('functions');
+params_set_name='2s0_scan_vmax_3p0c_dt_10zs';
 h_atom
 ```
 
@@ -126,46 +149,49 @@ For parallel runs, start separate MATLAB sessions and set one
 `params_set_name` per session, for example:
 
 ```Matlab
-addpath('functions');
-params_set_name='2p0_scan_vmax_1p0c';
+clear; addpath('functions');
+params_set_name='2p0_scan_vmax_1p0c_dt_10zs';
 h_atom
 ```
 
 The scan presets keep `traj_points=1` because the sweep is a statistical
 energy-error test, not a trajectory-visualisation run.
 
-By default, the sweep uses a common-random-number design: each cutoff value
-starts from the same seed, so differences between cutoff values are less
-contaminated by unrelated Brownian histories. To run an independent-randomness
-robustness check without overwriting the common sweep, set
-`independent_random_design=true` and choose a `random_seed`. These runs are
-written as separate run folders, for example
-`data/2s0_scan_independent_seed_101_vmax_1p0c/`.
+Multi-trajectory runs (`M > 1`, i.e. all `*_scan_*` presets) use an
+independent-seed design: the RNG seed is set by `random_seed` (default `7`)
+and is appended to the run folder name as the last token, e.g.
+`data/2s0_scan_vmax_1p0c_dt_10zs_seed_101/`. The scan folder name is rebuilt
+from the effective `v_max/c` and `dt`, so it always carries both tags. Each
+seed is stored in its own folder, so seed replicates never overwrite one
+another. (Single-trajectory runs, `M == 1`, always use the fixed seed `7` and
+are left untagged.)
 
 For example, to test the `(2,0,0)` state at `v_max/c = 0.1, 1.0, 3.0` with
-one independent seed, run the following commands in MATLAB:
+seed 101, run the following commands in MATLAB:
 
 ```Matlab
-addpath('functions');
-independent_random_design = true;
+clear; addpath('functions');
+random_seed = 101;   % set after each clear so the seed survives
+params_set_name='2s0_scan_vmax_0p1c_dt_10zs';
+h_atom
+
+clear; addpath('functions');
 random_seed = 101;
-
-params_set_name='2s0_scan_vmax_0p1c';
+params_set_name='2s0_scan_vmax_1p0c_dt_10zs';
 h_atom
 
-params_set_name='2s0_scan_vmax_1p0c';
-h_atom
-
-params_set_name='2s0_scan_vmax_3p0c';
+clear; addpath('functions');
+random_seed = 101;
+params_set_name='2s0_scan_vmax_3p0c_dt_10zs';
 h_atom
 ```
 
 These three runs write to:
 
 ```text
-data/2s0_scan_independent_seed_101_vmax_0p1c/
-data/2s0_scan_independent_seed_101_vmax_1p0c/
-data/2s0_scan_independent_seed_101_vmax_3p0c/
+data/2s0_scan_vmax_0p1c_dt_10zs_seed_101/
+data/2s0_scan_vmax_1p0c_dt_10zs_seed_101/
+data/2s0_scan_vmax_3p0c_dt_10zs_seed_101/
 ```
 
 Repeat the same three commands with another `random_seed` if additional
@@ -174,107 +200,133 @@ independent replicates are needed.
 # Running the time-step (dt) sweep
 
 To check that the results are converged with respect to the integration time
-step, run the dedicated `*_scan_dt_*` parameter sets.  Like the cutoff sweep
-they use `M=100` trajectories and `traj_points=1` (a statistical energy test,
-not a trajectory-visualisation run), with `v_max/c` held at the production
-value `1.0`.  The **total simulated time `n_steps*dt` is held fixed** (equal
-physical time across all sweep points): `n_steps` is rescaled automatically from
-the encoded `dt`, so every point covers the same physical duration.
+step, sweep the `dt` tag of the unified scan sets at the production cutoff
+`v_max/c = 1.0`.  Like the cutoff sweep these use `M=100` trajectories and
+`traj_points=1` (a statistical energy test, not a trajectory-visualisation
+run).  The **total simulated time is held fixed** (equal physical time across
+all sweep points): `n_steps` is rescaled automatically from `dt`, so every
+point covers the same physical duration.
 
-The `dt` value is encoded in the set name: the mantissa uses `p` for the decimal
-point, `e` separates the exponent, and `m`/`p` after `e` is the exponent sign.
-For example `1em20` → `1e-20 s`, `5em21` → `5e-21 s`, `1p5em20` → `1.5e-20 s`.
-
-The sweep is defined for the nodal states `(2,1,0)` (`2p0_scan_dt_*`) and
-`(2,0,0)` (`2s0_scan_dt_*`).  For `2p0`/`2s0` the fixed total time is `1e-11 s`,
-so `dt=1e-20` reproduces the production `n_steps=1e9`.
+Both `v_max/c` and `dt` are encoded in the set name, and `dt` is required.  `dt`
+is given in zeptoseconds (`1 zs = 1e-21 s`), with `p` for the decimal point.
+For example `_dt_100zs` → `1e-19 s`, `_dt_1zs` → `1e-21 s`, `_dt_0p5zs` →
+`5e-22 s`.  For `2p0`/`2s0` the fixed total time is `1e-11 s`, so `dt=10 zs`
+reproduces the production `n_steps=1e9`.
 
 First run a short smoke test (total time `1e-13 s`):
 
 ```Matlab
-addpath('functions');
-params_set_name='test_scan_dt_1em20';
+clear; addpath('functions');
+params_set_name='test_scan_vmax_1p0c_dt_10zs';
 h_atom
 ```
 
 Then run the `(2,1,0)` dt sweep one point at a time — about six logarithmically
-spaced steps around the default `1e-20 s`:
+spaced steps around the default `10 zs` (`random_seed` is set after each clear
+so it survives, tagging the multi-trajectory runs):
 
 ```Matlab
-addpath('functions');
-params_set_name='2p0_scan_dt_1em19';   % coarsest, n_steps=1e8
+clear; addpath('functions'); random_seed = 101;
+params_set_name='2p0_scan_vmax_1p0c_dt_100zs';   % coarsest, n_steps=1e8
 h_atom
 
-params_set_name='2p0_scan_dt_5em20';   % n_steps=2e8
+clear; addpath('functions'); random_seed = 101;
+params_set_name='2p0_scan_vmax_1p0c_dt_50zs';    % n_steps=2e8
 h_atom
 
-params_set_name='2p0_scan_dt_1em20';   % baseline, n_steps=1e9
+clear; addpath('functions'); random_seed = 101;
+params_set_name='2p0_scan_vmax_1p0c_dt_10zs';    % baseline, n_steps=1e9
 h_atom
 
-params_set_name='2p0_scan_dt_5em21';   % n_steps=2e9
+clear; addpath('functions'); random_seed = 101;
+params_set_name='2p0_scan_vmax_1p0c_dt_5zs';     % n_steps=2e9
 h_atom
 
-params_set_name='2p0_scan_dt_2em21';   % n_steps=5e9
+clear; addpath('functions'); random_seed = 101;
+params_set_name='2p0_scan_vmax_1p0c_dt_2zs';     % n_steps=5e9
 h_atom
 
-params_set_name='2p0_scan_dt_1em21';   % finest, n_steps=1e10
+clear; addpath('functions'); random_seed = 101;
+params_set_name='2p0_scan_vmax_1p0c_dt_1zs';     % finest, n_steps=1e10
 h_atom
 ```
 
 The `(2,0,0)` sweep is the same with the `2s0_` prefix:
 
 ```Matlab
-addpath('functions');
-params_set_name='2s0_scan_dt_1em19';
+clear; addpath('functions'); random_seed = 101;
+params_set_name='2s0_scan_vmax_1p0c_dt_100zs';
 h_atom
-% ... 5em20, 1em20, 5em21, 2em21, 1em21 ...
-params_set_name='2s0_scan_dt_1em21';
+% ... 50zs, 10zs, 5zs, 2zs, 1zs (each preceded by: clear; addpath('functions'); random_seed = 101;) ...
+clear; addpath('functions'); random_seed = 101;
+params_set_name='2s0_scan_vmax_1p0c_dt_1zs';
 h_atom
 ```
 
-These runs write to their own folders, e.g.:
+These runs write to their own folders, e.g. (with `random_seed = 101`):
 
 ```text
-data/2p0_scan_dt_1em19/
-data/2p0_scan_dt_5em20/
-data/2p0_scan_dt_1em20/
-data/2p0_scan_dt_5em21/
-data/2p0_scan_dt_2em21/
-data/2p0_scan_dt_1em21/
+data/2p0_scan_vmax_1p0c_dt_100zs_seed_101/
+data/2p0_scan_vmax_1p0c_dt_50zs_seed_101/
+data/2p0_scan_vmax_1p0c_dt_10zs_seed_101/
+data/2p0_scan_vmax_1p0c_dt_5zs_seed_101/
+data/2p0_scan_vmax_1p0c_dt_2zs_seed_101/
+data/2p0_scan_vmax_1p0c_dt_1zs_seed_101/
 ```
 
 **Runtime note:** because the total simulated time is held fixed, the step
 count (and therefore the wall-clock time) scales as `1/dt`.  Halving `dt`
-doubles `n_steps`; the `1e-21 s` point runs ~10x longer than the `1e-20 s`
+doubles `n_steps`; the `1 zs` point runs ~10x longer than the `10 zs`
 baseline.  For parallel runs, start separate MATLAB sessions and set one
 `params_set_name` per session.
 
-To add a sweep point, just use a new encoded `dt` in the set name — no edit to
-`parameters.m` is required; the value is parsed from the name.
+To add a sweep point, just use a new `dt` (or `v_max/c`) tag in the set name —
+no edit to `parameters.m` is required; both values are parsed from the name.
 
-## Quick dt override on any preset
+## Quick dt / v_max override
 
-For a one-off check on a preset that has no `scan_dt` set, set `dt_override` in
-the workspace before calling `h_atom`.  It replaces `dt` and rescales `n_steps`
-the same way (equal physical time), and writes to a folder tagged with the `dt`
-value in zeptoseconds (`1 zs = 1e-21 s`, `p` for the decimal point), e.g.
-`dt_override = 5e-21` -> `data/2p0_10ps_dt_5zs/`, so the baseline run is not
-overwritten.  Note this keeps the preset's own `M` and `traj_points` (for
-`2p0_10ps` that is `M=1` and a large `traj_points`, i.e. a single-trajectory
-visualisation run, not the `M=100` statistical sweep above).
+`dt_override` and `vmax_override` change the integration step or the velocity
+cutoff at run time without defining a new set name.  Set either (or both) in the
+workspace before calling `h_atom`:
+
+- `dt_override` (seconds) replaces `dt` and rescales `n_steps` to keep the
+  physical duration fixed.
+- `vmax_override` (in units of `c`) replaces `v_max/c`.
+
+For a **scan set** the output folder name is rebuilt from the *effective*
+(post-override) `v_max/c` and `dt`, so it always reflects what actually ran and
+never overwrites the un-overridden run:
 
 ```Matlab
-addpath('functions');
+clear; addpath('functions');
+params_set_name='2s0_scan_vmax_1p0c_dt_10zs';
+dt_override = 5e-21;     % -> dt tag 5zs
+vmax_override = 3.0;     % -> vmax tag 3p0c
+h_atom
+% writes data/2s0_scan_vmax_3p0c_dt_5zs_seed_7/
+% (the next run's leading `clear` removes dt_override / vmax_override)
+```
+
+For a **non-scan preset** (e.g. `2p0_10ps`) the override appends a `_dt_<d>zs`
+(and/or `_vmax_<v>c`) tag to the preset name so the baseline run is not
+overwritten.  Note this keeps the preset's own `M` and `traj_points` (for
+`2p0_10ps` that is `M=1` and a large `traj_points`, i.e. a single-trajectory
+visualisation run, not the `M=100` statistical sweep above):
+
+```Matlab
+clear; addpath('functions');
 params_set_name='2p0_10ps';
 dt_override = 5e-21;
 h_atom
-clear dt_override   % restore the preset's built-in dt afterwards
+% writes data/2p0_10ps_dt_5zs/
+% (the next run's leading `clear` restores the preset's built-in dt)
 ```
 
 # Post processing
 The simulation will creata 'data' directory for every parameters set. 
 The post processing tooks around 5 min.
 ```Matlab
+clear; addpath('functions');
 h_atom_post_processing
 ```
 
@@ -282,34 +334,33 @@ For cutoff sweeps, the post-processing can be run directly after all sweep
 points for a state have finished:
 
 ```Matlab
-addpath('functions');
+clear; addpath('functions');
 analyse_cutoff_scan('2p0', 'figures');
 analyse_cutoff_scan('2s0', 'figures');
 ```
 
-For an independent-randomness robustness run, use the same analysis function
-with the seed-specific run filter after all three independent runs finish:
+To analyse a single seed only, pass the seed-specific run filter after all
+three runs for that seed finish:
 
 ```Matlab
-addpath('functions');
-analyse_cutoff_scan('2s0', 'figures/independent_seed_101', ...
-                    'data', 'independent_seed_101');
+clear; addpath('functions');
+analyse_cutoff_scan('2s0', 'figures/seed_101', ...
+                    'data', 'seed_101');
 ```
 
-This reads the independent-seed folders matching
-`data/2s0_scan_independent_seed_101_vmax_*` and writes:
+This reads the folders matching `data/2s0_scan_vmax_*_seed_101` and writes:
 
 ```text
-figures/independent_seed_101/cutoff_scan_kinetic_2s0_independent_seed_101.pdf
-figures/independent_seed_101/cutoff_scan_crossings_2s0_independent_seed_101.pdf
+figures/seed_101/cutoff_scan_kinetic_2s0_seed_101.pdf
+figures/seed_101/cutoff_scan_crossings_2s0_seed_101.pdf
 ```
 
-To overlay the common-random sweep and all independent-seed points available
-under `data/` on the same plots, use:
+To pool every seed available under `data/` on the same plots, use `'all'`
+(the default filter loads all seeds as well):
 
 ```Matlab
-addpath('functions');
-analyse_cutoff_scan('2s0', 'figures/all_random_designs', 'data', 'all');
+clear; addpath('functions');
+analyse_cutoff_scan('2s0', 'figures/all_seeds', 'data', 'all');
 ```
 
 In this combined plot, the common-random sweep is drawn as connected curves,

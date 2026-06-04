@@ -7,22 +7,11 @@ if resume_requested
 end
 resume_from_workspace = false;
 if ~resume_requested
-clearvars -except params_set_name resume_requested resume_from_workspace independent_random_design random_seed dt_override;
+clearvars -except params_set_name resume_requested resume_from_workspace random_seed dt_override vmax_override;
 resume_from_workspace = false;
 
-if ~exist('independent_random_design', 'var')
-    independent_random_design = false;
-end
 if ~exist('random_seed', 'var') || isempty(random_seed)
     random_seed = 7;
-end
-if independent_random_design
-    rng(random_seed);
-    random_design_label = sprintf('independent_seed_%d', random_seed);
-else
-    random_seed = 7;
-    rng(random_seed); % common-random-number design for reproducible sweeps
-    random_design_label = 'common_seed_7';
 end
 
 if ~exist('params_set_name', 'var')
@@ -31,6 +20,16 @@ end
 active_params_set_name = params_set_name;
 
 [n, l, m, n_steps, dt, traj_points, sigma_r_factor, M, v_max_over_c] = parameters(params_set_name);
+
+% Random seeding. Multi-trajectory runs (M > 1) use an independent-seed design:
+% the seed is configurable via random_seed (default 7) and the M trajectories
+% supply the statistical spread. Single-trajectory runs (M == 1) always use the
+% fixed seed 7 for reproducibility.
+if M == 1
+    random_seed = 7;
+end
+rng(random_seed);
+random_design_label = sprintf('independent_seed_%d', random_seed);
 
 % Optional dt sweep: set dt_override in the workspace before running to use a
 % different time step than the one defined in parameters.m. n_steps is rescaled
@@ -45,31 +44,54 @@ if exist('dt_override', 'var') && ~isempty(dt_override)
              '(total time %.3e s held fixed)\n'], dt, n_steps, total_time);
 end
 
+% Optional v_max sweep: set vmax_override (in units of c) in the workspace
+% before running to use a different velocity cutoff than the one encoded in
+% the parameter-set name. Symmetric to dt_override; the effective value is
+% reflected in the output folder name. Clear vmax_override to fall back to the
+% value from the set name.
+if exist('vmax_override', 'var') && ~isempty(vmax_override)
+    v_max_over_c = vmax_override;
+    fprintf('vmax override active: v_max = %.4g c\n', v_max_over_c);
+end
+
 % M is supplied by parameters.m so scan runs can use fewer trajectories
 % without changing the production presets.
 is_cutoff_scan_run = ~isempty(regexp(params_set_name, '_scan_vmax_', 'once'));
-is_dt_scan_run = ~isempty(regexp(params_set_name, '_scan_dt_', 'once'));
-% Both sweeps use the same kinetic-error-vs-reference plotting layout.
-is_kinetic_scan_run = is_cutoff_scan_run || is_dt_scan_run;
-output_run_name = params_set_name;
-if independent_random_design && is_cutoff_scan_run
-    scan_tokens = regexp(params_set_name, '^(2p0|2s0)_scan_vmax_([0-9]+p[0-9]+c)$', ...
-                         'tokens', 'once');
-    if isempty(scan_tokens)
-        error('Independent random design is only defined for cutoff scan runs.');
-    end
-    output_run_name = sprintf('%s_scan_independent_seed_%d_vmax_%s', ...
-                              scan_tokens{1}, random_seed, scan_tokens{2});
-elseif independent_random_design
-    output_run_name = sprintf('%s_independent_seed_%d', params_set_name, random_seed);
+% Scan runs share the kinetic-error-vs-reference plotting layout.
+is_kinetic_scan_run = is_cutoff_scan_run;
+% Output-name tags built from the EFFECTIVE (post-override) v_max/c and dt.
+% v_max/c uses 'p' for the decimal point and at least one decimal place
+% (3 -> 3p0c); dt is in zeptoseconds (1 zs = 1e-21 s), e.g. dt=1e-21 s -> '1zs',
+% 1e-20 s -> '10zs', 5e-22 s -> '0p5zs'.
+vmax_str = sprintf('%g', v_max_over_c);
+if ~any(vmax_str == '.')
+    vmax_str = [vmax_str '.0'];
 end
-% Tag the output folder/files with the dt value so each dt sweep point is saved
-% separately instead of overwriting the baseline run data directory. The dt
-% is expressed in zeptoseconds (1 zs = 1e-21 s) for a readable tag, with 'p' in
-% place of any decimal point, e.g. dt=1e-20 s -> '_dt_10zs', 5e-22 s -> '_dt_0p5zs'.
-if exist('dt_override', 'var') && ~isempty(dt_override)
-    dt_zs_str = strrep(sprintf('%g', dt / 1e-21), '.', 'p');
-    output_run_name = sprintf('%s_dt_%szs', output_run_name, dt_zs_str);
+vmax_tag = [strrep(vmax_str, '.', 'p') 'c'];
+dt_tag = strrep(sprintf('%g', dt / 1e-21), '.', 'p');
+% For scan runs the name is rebuilt from the effective tags, so the folder
+% always reflects what actually ran, e.g. 2s0_scan_vmax_3p0c_dt_1zs. Non-scan
+% production presets keep their set name, but get a _dt_/_vmax_ tag whenever an
+% override is active so the un-overridden baseline run is not overwritten.
+if is_cutoff_scan_run
+    scan_prefix = regexp(params_set_name, '^(.*?)_scan_vmax_', 'tokens', 'once');
+    output_run_name = sprintf('%s_scan_vmax_%s_dt_%szs', ...
+                              scan_prefix{1}, vmax_tag, dt_tag);
+else
+    output_run_name = params_set_name;
+    if exist('dt_override', 'var') && ~isempty(dt_override)
+        output_run_name = sprintf('%s_dt_%szs', output_run_name, dt_tag);
+    end
+    if exist('vmax_override', 'var') && ~isempty(vmax_override)
+        output_run_name = sprintf('%s_vmax_%s', output_run_name, vmax_tag);
+    end
+end
+% Tag multi-trajectory runs (M > 1) with the RNG seed as the last token, so
+% each ensemble is reproducible and seed replicates are stored in separate
+% folders, e.g. 2s0_scan_vmax_3p0c_dt_1zs_seed_31000. Single-trajectory runs
+% (M == 1) always use seed 7 and are left untagged.
+if M > 1
+    output_run_name = sprintf('%s_seed_%d', output_run_name, random_seed);
 end
 make_live_plots = true;
 % By default the 8 dashboard subplots (radial/polar/azimuthal histograms,
@@ -95,15 +117,18 @@ if ~exist(base_dir, 'dir')
     if status
         disp(['Directory "', base_dir, '" created successfully.']);
     else
-        disp(['Failed to create directory "', base_dir, '".']);
-        exit;
+        error('Failed to create directory "%s".', base_dir);
     end
 else
     disp(['Directory "', base_dir, '" already exists. Existing outputs may be overwritten.']);
 end
 
 video_filename = fullfile(base_dir, strcat(output_run_name,'.mp4'));
-frame_step = (n_steps / n_frames);
+% Integer frame stride so mod(i, frame_step) still fires when n_frames does not
+% divide n_steps (e.g. dt-scan / dt_override runs, where n_steps = round(...)).
+% floor() can produce up to one extra firing; the frame_index <= n_frames guard
+% at the recording site below prevents an out-of-bounds write.
+frame_step = max(1, floor(n_steps / n_frames));
 fprintf('Random design: %s (seed = %d)\n', random_design_label, random_seed);
 
 % Energy Variables
@@ -173,9 +198,22 @@ dev_arr_R = zeros(1, n_frames);
 dev_arr_theta = zeros(1, n_frames);
 dev_arr_phi = zeros(1, n_frames);
 
-% Small values to prevent division by zero
+% Coordinate-singularity floors at the origin (r) and poles (sin theta).
+% Besides preventing exact division by zero, they bound the divergent diffusion
+% amplitudes sigma/r (theta-update) and sigma/(r sin theta) (phi-update), which
+% the velocity cap v_max does NOT reach -- the cap limits drift only, not noise.
+% The geometric-drift divergence (1/r, cot theta) is instead handled by v_max,
+% so for the drift these floors are redundant; their non-redundant role is
+% bounding the noise.
 epsilon_r = 1e-4 * a_0;
 epsilon_theta = 1e-7;
+% epsilon_R, epsilon_Y_theta floor |R| and |Y_theta| in the log-derivative
+% drift (dR/R, dY/Y). The velocity cap v_max already bounds this drift on both
+% sides of a node and turns an Inf into +/-v_max, so these floors are physically
+% redundant; they are needed only to avoid a literal 0/0 = NaN exactly at a node,
+% which the cap cannot catch (abs(NaN) > v_max is false, so a NaN would slip
+% through and corrupt the trajectory). Safe to relax/remove for simple nodes
+% (R = 0 but R' ~= 0), but kept as a cheap NaN guard.
 epsilon_R = 1e-7;
 epsilon_Y_theta = 1e-7;
 
@@ -356,6 +394,14 @@ for i = i_start:n_steps
     % Update the Polar Angle
     theta = theta + (1./ r_safe) .* ((mu_theta_curv + b_theta_drift) .* dt + dW_theta);
 
+    % Reflecting boundaries at the poles theta = 0 and theta = pi (the analogue
+    % of the r <- |r| reflection at the origin). The restoring geometric drift
+    % cot(theta)/2 is capped at v_max, so a noise kick can push theta outside
+    % [0, pi]; histcounts would then silently drop the sample, and for m ~= 0,
+    % sin(theta) < 0 would flip the sign of the azimuthal drift and noise. The
+    % triangle fold below is idempotent and handles any overshoot.
+    theta = pi - abs(pi - mod(theta, 2 * pi));
+
     if use_polar_node_diagnostic
         current_node_value = cos(theta);
         N_cross_per_traj = N_cross_per_traj + (previous_node_value .* current_node_value < 0);
@@ -442,7 +488,7 @@ for i = i_start:n_steps
     S_V_M         = S_V_M         + V;
     S_E_M         = S_E_M         + E;
 
-    if mod(i, frame_step) == 0
+    if mod(i, frame_step) == 0 && frame_index <= n_frames
         fprintf('i=%d, t=%.5e, KE_r=%.5e, K_azim=%.5e, V=%.5e, E=%.5e, N_cross=%d\r', ...
             i, i*dt, S_KE_radial/i, S_KE_theta / i, S_V/i, S_E/i, sum(N_cross_per_traj));
 

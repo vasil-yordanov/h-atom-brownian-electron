@@ -4,8 +4,8 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
     % Usage:
     %   analyse_cutoff_scan('2p0');
     %   analyse_cutoff_scan('2p0', 'figures');
-    %   analyse_cutoff_scan('2s0', 'figures/independent_seed_101', ...
-    %                       'data', 'independent_seed_101');
+    %   analyse_cutoff_scan('2s0', 'figures/seed_31000', ...
+    %                       'data', 'seed_31000');
     %
     % Loads scan .mat files under data_root and checks
     % whether the relevant kinetic-energy first moment is stable under
@@ -29,19 +29,18 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
         error('state_label must be either ''2p0'' or ''2s0''.');
     end
 
-    if strcmp(run_filter, 'common')
+    % Folder/file convention (seed is the last token):
+    %   2s0_scan_vmax_3p0c_seed_17000
+    %   2s0_scan_vmax_3p0c_dt_1zs_seed_31000
+    % 'all'/'common' load every seed; 'seed_<N>' loads a single seed only.
+    if strcmp(run_filter, 'all') || strcmp(run_filter, 'common')
         files = dir(fullfile(data_root, [state_label '_scan_vmax_*'], ...
                              [state_label '_scan_vmax_*.mat']));
-    elseif strncmp(run_filter, 'independent_seed_', length('independent_seed_'))
-        files = dir(fullfile(data_root, [state_label '_scan_' run_filter '_vmax_*'], ...
-                             [state_label '_scan_' run_filter '_vmax_*.mat']));
-    elseif strcmp(run_filter, 'all')
-        files = dir(fullfile(data_root, [state_label '_scan_vmax_*'], ...
-                             [state_label '_scan_vmax_*.mat']));
-        files = [files; dir(fullfile(data_root, [state_label '_scan_independent_seed_*_vmax_*'], ...
-                                     [state_label '_scan_independent_seed_*_vmax_*.mat']))];
+    elseif strncmp(run_filter, 'seed_', length('seed_'))
+        files = dir(fullfile(data_root, [state_label '_scan_vmax_*_' run_filter], ...
+                             [state_label '_scan_vmax_*_' run_filter '.mat']));
     else
-        error('run_filter must be ''common'', ''all'', or ''independent_seed_<seed>''.');
+        error('run_filter must be ''all'', ''common'', or ''seed_<seed>''.');
     end
     if isempty(files)
         error('No scan .mat files found for state %s in %s.', state_label, data_root);
@@ -266,7 +265,6 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
     grid on;
     hold on;
     draw_horizontal_line(T_analytical, '-.', [0.60, 0.00, 0.00]);
-    draw_vertical_line(1, '--', [0, 0, 0]);
     legend('show', 'Interpreter', 'latex', 'Location', 'best', 'Box', 'off');
     hold off;
 
@@ -288,7 +286,6 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
     grid on;
     hold on;
     draw_horizontal_line(T_analytical, '-.', [0.60, 0.00, 0.00]);
-    draw_vertical_line(1, '--', [0, 0, 0]);
     legend('show', 'Interpreter', 'latex', 'Location', 'best', 'Box', 'off');
     hold off;
 
@@ -365,7 +362,6 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
         grid on;
         hold on;
         draw_horizontal_line(100, '--', [0.60, 0.00, 0.00]);
-        draw_vertical_line(1, '--', [0, 0, 0]);
         legend('show', 'Interpreter', 'latex', 'Location', 'best', 'Box', 'off');
         hold off;
 
@@ -377,15 +373,89 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
         exportgraphics(fig_cross, fullfile(export_dir, cross_pdf_name), 'ContentType', 'vector');
         fprintf('%s written\n', fullfile(export_dir, cross_pdf_name));
     end
+
+    % -----------------------------------------------------------------
+    % Manuscript figure (Physica Scripta style): a single clean panel
+    % showing the mean only, with one connected error-bar curve per dt
+    % group. The multi-panel diagnostic PDFs above are left unchanged;
+    % this is an additional export prepared for the paper.
+    % -----------------------------------------------------------------
+    export_manuscript_mean_figure(state_label, export_dir, run_filter, ...
+        v_over_c, T_mean, T_mean_se, dt_zs, T_analytical);
+end
+
+function export_manuscript_mean_figure(state_label, export_dir, run_filter, ...
+                                       v_over_c, T_mean, T_mean_se, dt_zs, T_analytical)
+    % Clean single-panel mean(<T>) vs v_max/c figure for the manuscript,
+    % sized and styled for Physica Scripta: single-column width, serif
+    % font, no in-figure title, one connected curve per integration step.
+    % Reuses the arrays already computed by the caller.
+
+    fig = figure('Units', 'centimeters', 'Position', [2, 2, 9.0, 7.2], ...
+                 'Color', 'w');
+    ax = axes('Parent', fig);
+    set(ax, 'FontName', 'Times', 'FontSize', 9, 'Box', 'on', ...
+            'TickLabelInterpreter', 'latex', 'LineWidth', 0.8, ...
+            'GridAlpha', 0.15);
+    hold(ax, 'on');
+
+    % Print-safe palette and distinct markers, one per dt group.
+    palette = [0.00, 0.20, 0.55;    % blue
+               0.10, 0.45, 0.20;    % green
+               0.70, 0.30, 0.00;    % orange-brown
+               0.45, 0.10, 0.55];   % purple
+    markers = {'o', 's', '^', 'd'};
+
+    dts = sort(unique(dt_zs));
+    for g = 1:numel(dts)
+        gi = (dt_zs == dts(g));
+        [vs, order] = sort(v_over_c(gi));
+        yy = T_mean(gi);    yy = yy(order);
+        ee = T_mean_se(gi); ee = ee(order);
+        ci = mod(g - 1, size(palette, 1)) + 1;
+        mi = mod(g - 1, numel(markers)) + 1;
+        errorbar(ax, vs, yy, ee, ee, markers{mi}, 'LineStyle', '-', ...
+                 'Color', palette(ci, :), 'MarkerFaceColor', palette(ci, :), ...
+                 'MarkerSize', 4, 'LineWidth', 1.0, 'CapSize', 3, ...
+                 'DisplayName', sprintf('$\\Delta t = %s$ s', dt_seconds_latex(dts(g))));
+    end
+
+    set(ax, 'XScale', 'log');
+    x_now = xlim(ax);
+    plot(ax, x_now, [T_analytical, T_analytical], '-.', ...
+         'Color', [0.60, 0.00, 0.00], 'LineWidth', 1.0, ...
+         'DisplayName', '$T_{\mathrm{an}}$');
+    xlim(ax, x_now);
+
+    xlabel(ax, '$v_{\max}/c$', 'Interpreter', 'latex', 'FontSize', 10);
+    if strcmp(state_label, '2p0')
+        ylabel(ax, '$\langle T_\theta \rangle$ (J)', 'Interpreter', 'latex', ...
+               'FontSize', 10);
+    else
+        ylabel(ax, '$\langle T_r \rangle$ (J)', 'Interpreter', 'latex', ...
+               'FontSize', 10);
+    end
+    legend(ax, 'show', 'Interpreter', 'latex', 'Location', 'northwest', ...
+           'Box', 'off', 'FontSize', 9);
+    grid(ax, 'on');
+    hold(ax, 'off');
+
+    if strcmp(run_filter, 'common')
+        pdf_name = ['cutoff_scan_kinetic_' state_label '_manuscript.pdf'];
+    else
+        pdf_name = ['cutoff_scan_kinetic_' state_label '_' run_filter '_manuscript.pdf'];
+    end
+    exportgraphics(fig, fullfile(export_dir, pdf_name), 'ContentType', 'vector');
+    fprintf('%s written\n', fullfile(export_dir, pdf_name));
 end
 
 function [value, seed_id, dt_zs] = parse_vmax_from_filename(state_label, mat_name)
     % Parse v_max/c, seed, and dt (in zeptoseconds) from a scan .mat filename.
-    % The seed and dt tags are optional. An untagged run uses the default
-    % dt = 10 zs (1e-20 s). Filenames look like:
-    %   2s0_scan_vmax_1p0c.mat
-    %   2s0_scan_independent_seed_112_vmax_5p0c.mat
-    %   2s0_scan_independent_seed_10000_vmax_5p0c_dt_2zs.mat
+    % The seed is the last token; the dt tag is optional and an untagged run
+    % uses the default dt = 10 zs (1e-20 s). Filenames look like:
+    %   2s0_scan_vmax_1p0c_seed_1001.mat
+    %   2s0_scan_vmax_5p0c_seed_112.mat
+    %   2s0_scan_vmax_5p0c_dt_2zs_seed_10000.mat
     v_tokens = regexp(mat_name, [state_label '_scan.*_vmax_([0-9]+p[0-9]+c)'], ...
                       'tokens', 'once');
     if isempty(v_tokens)
@@ -393,7 +463,7 @@ function [value, seed_id, dt_zs] = parse_vmax_from_filename(state_label, mat_nam
     end
     value = str2double(strrep(strrep(v_tokens{1}, 'c', ''), 'p', '.'));
 
-    seed_tokens = regexp(mat_name, '_independent_seed_([0-9]+)_', 'tokens', 'once');
+    seed_tokens = regexp(mat_name, '_seed_([0-9]+)', 'tokens', 'once');
     if isempty(seed_tokens)
         seed_id = NaN;
     else
@@ -423,7 +493,7 @@ function plot_dt_grouped_errorbar(v_over_c, y_value, lower_err, upper_err, dt_zs
         errorbar(vs, yy, lo, hi, marker, 'LineStyle', '-', ...
                  'Color', colors(g, :), 'MarkerFaceColor', colors(g, :), ...
                  'LineWidth', 1.3, ...
-                 'DisplayName', sprintf('$dt = %g$ zs', dts(g)));
+                 'DisplayName', sprintf('$\\Delta t = %s$ s', dt_seconds_latex(dts(g))));
     end
     hold off;
 end
@@ -439,7 +509,7 @@ function plot_dt_grouped_line(v_over_c, y_value, dt_zs, marker)
         yy = y_value(gi);  yy = yy(order);
         plot(vs, yy, [marker '-'], 'Color', colors(g, :), ...
              'MarkerFaceColor', colors(g, :), 'LineWidth', 1.3, ...
-             'DisplayName', sprintf('$dt = %g$ zs', dts(g)));
+             'DisplayName', sprintf('$\\Delta t = %s$ s', dt_seconds_latex(dts(g))));
     end
     hold off;
 end
@@ -466,6 +536,25 @@ function T_analytical = kinetic_energy_reference_value(state_label)
         T_analytical = 3.6330e-19;
     else
         T_analytical = 5.4497e-19;
+    end
+end
+
+function s = dt_seconds_latex(dt_zs)
+    % Format a dt given in zeptoseconds as a LaTeX power-of-ten string in
+    % seconds, e.g. 10 zs -> '10^{-20}', 100 zs -> '10^{-19}',
+    % 5 zs -> '5 \times 10^{-21}'.
+    dt_s = dt_zs * 1e-21;
+    e = floor(log10(dt_s) + 1e-9);
+    m = dt_s / 10^e;
+    m = round(m * 1e6) / 1e6;
+    if m >= 10 - 1e-6      % guard against round-up into the next decade
+        m = m / 10;
+        e = e + 1;
+    end
+    if abs(m - 1) < 1e-9
+        s = sprintf('10^{%d}', e);
+    else
+        s = sprintf('%g \\times 10^{%d}', m, e);
     end
 end
 
@@ -497,13 +586,6 @@ function draw_horizontal_line(y_value, line_style, color)
     plot(x_limits, [y_value, y_value], line_style, 'Color', color, ...
          'LineWidth', 1.2, 'HandleVisibility', 'off');
     xlim(x_limits);
-end
-
-function draw_vertical_line(x_value, line_style, color)
-    y_limits = ylim;
-    plot([x_value, x_value], y_limits, line_style, 'Color', color, ...
-         'LineWidth', 1.2, 'HandleVisibility', 'off');
-    ylim(y_limits);
 end
 
 function se = bootstrap_mean_se(values, n_boot, seed)

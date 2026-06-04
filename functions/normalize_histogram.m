@@ -5,7 +5,7 @@ function hist_counts = normalize_histogram(hist_counts, hist_bins)
     % Normalize the histogram counts so that the area under the histogram is 1
     if total_area > 0
         hist_counts = hist_counts / total_area;
-    else
-        hist_counts = hist_counts;  % Avoid division by zero
     end
+    % If total_area == 0 the counts are all zero; leave them unchanged
+    % (avoids division by zero).
 end

@@ -7,6 +7,6 @@ function [hbar ,m_e, a_0, e_charge, epsilon_0, c] = constants()
     a_0 = 5.29177e-11;           % Bohr radius (m)
     e_charge = 1.602176634e-19;  % Elementary charge (C)
     epsilon_0 = 8.854187817e-12; % Vacuum permittivity (F/m)
-    c=3e8;                       % speed of light (m/s)
+    c=2.99792458e8;              % speed of light (m/s)
 end
 
