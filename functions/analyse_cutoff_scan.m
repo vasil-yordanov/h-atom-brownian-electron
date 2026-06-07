@@ -1,16 +1,24 @@
-function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter)
-    % ANALYSE_CUTOFF_SCAN  Kinetic-energy cutoff scan diagnostic.
+function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
+    % ANALYSE_CUTOFF_SCAN  Kinetic-energy cutoff scan post-processing.
     %
     % Usage:
-    %   analyse_cutoff_scan('2p0');
-    %   analyse_cutoff_scan('2p0', 'figures');
-    %   analyse_cutoff_scan('2s0', 'figures/seed_31000', ...
-    %                       'data', 'seed_31000');
+    %   analyse_cutoff_scan('2s0');                 % default: manuscript Fig. 9 only
+    %   analyse_cutoff_scan('2s0', 'figures');
+    %   analyse_cutoff_scan('2s0', 'figures', 'data', 'extended');
     %
-    % Loads scan .mat files under data_root and checks
-    % whether the relevant kinetic-energy first moment is stable under
-    % changes in v_max. The figure deliberately includes both mean/SEM and
-    % median/IQR views because the nodal kinetic energy is heavy-tailed.
+    % Loads every scan .mat file under data_root (all seeds) and checks whether
+    % the relevant kinetic-energy first moment is stable under changes in v_max.
+    %
+    % mode:
+    %   'default'  (default) -- print the convergence tables and export only
+    %              the single-panel manuscript figure (Fig. 9).
+    %   'extended' -- additionally export a 6-panel diagnostic figure:
+    %              (a) mean +/- bootstrap SE, (b) median +/- bootstrap SE,
+    %              (c) all per-trajectory points, (d) nodal crossing rate,
+    %              (e) running-mean error, (f) running trajectory scatter.
+    %              The mean/median panels deliberately show both mean/SEM and
+    %              median/IQR views because the nodal kinetic energy is
+    %              heavy-tailed.
 
     if nargin < 2
         export_dir = 'figures';
@@ -19,8 +27,12 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
         data_root = 'data';
     end
     if nargin < 4
-        run_filter = 'common';
+        mode = 'default';
     end
+    if ~(strcmp(mode, 'default') || strcmp(mode, 'extended'))
+        error('mode must be either ''default'' or ''extended''.');
+    end
+    extended = strcmp(mode, 'extended');
     if ~exist(export_dir, 'dir')
         mkdir(export_dir);
     end
@@ -29,19 +41,12 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
         error('state_label must be either ''2p0'' or ''2s0''.');
     end
 
-    % Folder/file convention (seed is the last token):
+    % Load every scan run for this state (all seeds). Folder/file convention,
+    % with the seed as the last token:
     %   2s0_scan_vmax_3p0c_seed_17000
     %   2s0_scan_vmax_3p0c_dt_1zs_seed_31000
-    % 'all'/'common' load every seed; 'seed_<N>' loads a single seed only.
-    if strcmp(run_filter, 'all') || strcmp(run_filter, 'common')
-        files = dir(fullfile(data_root, [state_label '_scan_vmax_*'], ...
-                             [state_label '_scan_vmax_*.mat']));
-    elseif strncmp(run_filter, 'seed_', length('seed_'))
-        files = dir(fullfile(data_root, [state_label '_scan_vmax_*_' run_filter], ...
-                             [state_label '_scan_vmax_*_' run_filter '.mat']));
-    else
-        error('run_filter must be ''all'', ''common'', or ''seed_<seed>''.');
-    end
+    files = dir(fullfile(data_root, [state_label '_scan_vmax_*'], ...
+                         [state_label '_scan_vmax_*.mat']));
     if isempty(files)
         error('No scan .mat files found for state %s in %s.', state_label, data_root);
     end
@@ -77,6 +82,7 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
     T_max_per_traj = zeros(n_files, 1);
     T_min_per_traj = zeros(n_files, 1);
     M_count = zeros(n_files, 1);
+    T_per_traj_cell = cell(n_files, 1);   % full per-trajectory vectors (scatter panel)
 
     % Bootstrap settings for the seed-to-seed estimator-uncertainty
     % error bars on panels (a) and (b). The heavy Lomax tail of T_r
@@ -132,6 +138,7 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
         T_max_per_traj(k) = max(T_per_traj);
         T_min_per_traj(k) = min(T_per_traj);
         M_count(k) = length(T_per_traj);
+        T_per_traj_cell{k} = T_per_traj(:);
         if isfield(S, 'N_cross_per_traj')
             N_cross_mean(k) = mean(S.N_cross_per_traj);
             N_cross_std(k) = std(S.N_cross_per_traj);
@@ -183,6 +190,7 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
     T_max_per_traj = T_max_per_traj(idx);
     T_min_per_traj = T_min_per_traj(idx);
     M_count = M_count(idx);
+    T_per_traj_cell = T_per_traj_cell(idx);
     if ~isempty(T_mean_time)
         T_mean_time = T_mean_time(idx, :);
         T_sem_time = T_sem_time(idx, :);
@@ -196,8 +204,8 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
     z_mean      = bias_mean   ./ max(T_mean_se   / T_analytical, eps);
     z_median    = bias_median ./ max(T_median_se / T_analytical, eps);
 
-    fprintf('\n=== Kinetic cutoff scan: %s  |  %s  |  %s ===\n', ...
-            state_label, data_root, run_filter);
+    fprintf('\n=== Kinetic cutoff scan: %s  |  %s ===\n', ...
+            state_label, data_root);
     fprintf('Analytical T = %.6e J\n', T_analytical);
     fprintf('bias = (T - T_an)/T_an  (signed).  z = bias / bootSE  (|z|<2 consistent with analytical).\n');
     fprintf('d_cut/a0 = alpha_fs / (v_max/c)  (nodal-layer width in Bohr radii).\n\n');
@@ -242,14 +250,34 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
     end
     fprintf('=======================================\n');
 
-    fig = figure('Position', [50, 50, 1500, 950]);
-    set(fig, 'DefaultAxesFontSize', 14, ...
-             'DefaultTextFontSize', 14, ...
-             'DefaultLegendFontSize', 14);
+    if ~extended
+        % -------------------------------------------------------------
+        % Default deliverable: the manuscript figure (Physica Scripta
+        % style, Fig. 9) -- a single clean panel showing the mean only,
+        % with one connected error-bar curve per dt group.
+        % -------------------------------------------------------------
+        export_manuscript_mean_figure(state_label, export_dir, ...
+            v_over_c, T_mean, T_mean_se, dt_zs, T_analytical);
+        return;
+    end
+
+    % -----------------------------------------------------------------
+    % Extended diagnostic figure: 6 panels in a 3x2 grid.
+    %   (a) mean   +/- bootstrap SE   (whiskers: classical SEM)
+    %   (b) median +/- bootstrap SE   (whiskers: IQR)
+    %   (c) all per-trajectory points (heavy-tail / seed spread)
+    %   (d) nodal crossing rate per trajectory
+    %   (e) running-mean error vs time (or final error vs v_max)
+    %   (f) running trajectory scatter vs time (or final SEM vs v_max)
+    % -----------------------------------------------------------------
+    fig = figure('Position', [50, 50, 1500, 1300]);
+    set(fig, 'DefaultAxesFontSize', 13, ...
+             'DefaultTextFontSize', 13, ...
+             'DefaultLegendFontSize', 12);
 
     colors = line_colors(length(v_over_c));
 
-    subplot(2, 2, 1);
+    subplot(3, 2, 1);
     % Primary error bars: bootstrap SE of the sample mean. The classical
     % SEM uses the empirical sample variance, which under the Lomax tail
     % (T_r for 2s0; T_theta for 2p0) is bounded only by the cutoff and
@@ -268,7 +296,7 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
     legend('show', 'Interpreter', 'latex', 'Location', 'best', 'Box', 'off');
     hold off;
 
-    subplot(2, 2, 2);
+    subplot(3, 2, 2);
     % Primary error bars: bootstrap SE of the sample median. IQR is a
     % within-sample spread statistic (converges to a finite population
     % IQR as M -> Inf) and does NOT quantify the uncertainty of the
@@ -289,7 +317,38 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
     legend('show', 'Interpreter', 'latex', 'Location', 'best', 'Box', 'off');
     hold off;
 
-    subplot(2, 2, 3);
+    subplot(3, 2, 3);
+    % Every trajectory's time-averaged kinetic energy as one point, grouped
+    % by dt (colour) at x = v_max/c, with per-file mean (diamond) and median
+    % (tick) overlaid. Exposes the heavy (Lomax) tail and seed-to-seed
+    % spread directly, instead of summarising them with a single bar.
+    plot_trajectory_points_panel(v_over_c, T_per_traj_cell, dt_zs, T_analytical);
+    title('(c) All per-trajectory $\left< T \right>$ (diamond: mean, tick: median)', ...
+          'Interpreter', 'latex');
+
+    subplot(3, 2, 4);
+    if any(~isnan(N_cross_mean))
+        plot_dt_grouped_errorbar(v_over_c, N_cross_mean, N_cross_std, N_cross_std, dt_zs, 'o');
+        set(gca, 'XScale', 'log');
+        if all(N_cross_mean(~isnan(N_cross_mean)) > 0)
+            set(gca, 'YScale', 'log');
+        end
+        xlabel('$v_{\max}/c$', 'Interpreter', 'latex');
+        ylabel('$N_{\rm cross}$ per trajectory', 'Interpreter', 'latex');
+        title('(d) Nodal crossing rate', 'Interpreter', 'latex');
+        grid on;
+        hold on;
+        draw_horizontal_line(100, '--', [0.60, 0.00, 0.00]);
+        legend('show', 'Interpreter', 'latex', 'Location', 'best', 'Box', 'off');
+        hold off;
+    else
+        text(0.5, 0.5, 'no crossing data', 'Units', 'normalized', ...
+             'HorizontalAlignment', 'center', 'Interpreter', 'latex');
+        title('(d) Nodal crossing rate', 'Interpreter', 'latex');
+        axis off;
+    end
+
+    subplot(3, 2, 5);
     hold on;
     if isempty(T_mean_time)
         plot_dt_grouped_line(v_over_c, T_rel_mean, dt_zs, 'o');
@@ -306,30 +365,31 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
         xlabel('$t$ (ps)', 'Interpreter', 'latex');
         ylabel('$|\overline{T}(t)-T_{\rm an}|/T_{\rm an}$', 'Interpreter', 'latex');
     end
-    title('(c) Running mean error', 'Interpreter', 'latex');
+    title('(e) Running mean error', 'Interpreter', 'latex');
     grid on;
     hold off;
 
-    subplot(2, 2, 4);
+    subplot(3, 2, 6);
     hold on;
     if isempty(T_sem_time)
         plot_dt_grouped_line(v_over_c, T_sem / T_analytical, dt_zs, '^');
         set(gca, 'XScale', 'log');
         xlabel('$v_{\max}/c$', 'Interpreter', 'latex');
+        legend('show', 'Interpreter', 'latex', ...
+               'Location', 'northeastoutside', 'Box', 'off');
     else
         t_ps = time_arr_ref / 1e-12;
         for k = 1:length(v_over_c)
             line_style = line_style_for_seed(seed_id(k));
             plot(t_ps, T_sem_time(k, :) / T_analytical, ...
-                 line_style, 'Color', colors(k, :), 'LineWidth', 1.2);
+                 line_style, 'Color', colors(k, :), 'LineWidth', 1.2, ...
+                 'HandleVisibility', 'off');
         end
         xlabel('$t$ (ps)', 'Interpreter', 'latex');
     end
     ylabel('$\mathrm{SEM}\left(\left< T \right>_j\right)/T_{\rm an}$', 'Interpreter', 'latex');
-    title('(d) Running trajectory scatter', 'Interpreter', 'latex');
+    title('(f) Running trajectory scatter', 'Interpreter', 'latex');
     grid on;
-    legend('show', 'Interpreter', 'latex', ...
-           'Location', 'northeastoutside', 'Box', 'off');
     hold off;
 
     title_str = sprintf('Kinetic-energy cutoff scan (%s)', state_label);
@@ -341,50 +401,12 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, run_filter
                    'FontSize', 16, 'FontWeight', 'bold');
     end
 
-    if strcmp(run_filter, 'common')
-        pdf_name = ['cutoff_scan_kinetic_' state_label '.pdf'];
-    else
-        pdf_name = ['cutoff_scan_kinetic_' state_label '_' run_filter '.pdf'];
-    end
+    pdf_name = ['cutoff_scan_kinetic_' state_label '.pdf'];
     exportgraphics(fig, fullfile(export_dir, pdf_name), 'ContentType', 'vector');
     fprintf('%s written\n', fullfile(export_dir, pdf_name));
-
-    if any(~isnan(N_cross_mean))
-        fig_cross = figure('Position', [80, 80, 900, 600]);
-        plot_dt_grouped_errorbar(v_over_c, N_cross_mean, N_cross_std, N_cross_std, dt_zs, 'o');
-        set(gca, 'XScale', 'log');
-        if all(N_cross_mean(~isnan(N_cross_mean)) > 0)
-            set(gca, 'YScale', 'log');
-        end
-        xlabel('$v_{\max}/c$', 'Interpreter', 'latex');
-        ylabel('$N_{\rm cross}$ per trajectory', 'Interpreter', 'latex');
-        title(sprintf('Nodal crossing count (%s)', state_label), 'Interpreter', 'latex');
-        grid on;
-        hold on;
-        draw_horizontal_line(100, '--', [0.60, 0.00, 0.00]);
-        legend('show', 'Interpreter', 'latex', 'Location', 'best', 'Box', 'off');
-        hold off;
-
-        if strcmp(run_filter, 'common')
-            cross_pdf_name = ['cutoff_scan_crossings_' state_label '.pdf'];
-        else
-            cross_pdf_name = ['cutoff_scan_crossings_' state_label '_' run_filter '.pdf'];
-        end
-        exportgraphics(fig_cross, fullfile(export_dir, cross_pdf_name), 'ContentType', 'vector');
-        fprintf('%s written\n', fullfile(export_dir, cross_pdf_name));
-    end
-
-    % -----------------------------------------------------------------
-    % Manuscript figure (Physica Scripta style): a single clean panel
-    % showing the mean only, with one connected error-bar curve per dt
-    % group. The multi-panel diagnostic PDFs above are left unchanged;
-    % this is an additional export prepared for the paper.
-    % -----------------------------------------------------------------
-    export_manuscript_mean_figure(state_label, export_dir, run_filter, ...
-        v_over_c, T_mean, T_mean_se, dt_zs, T_analytical);
 end
 
-function export_manuscript_mean_figure(state_label, export_dir, run_filter, ...
+function export_manuscript_mean_figure(state_label, export_dir, ...
                                        v_over_c, T_mean, T_mean_se, dt_zs, T_analytical)
     % Clean single-panel mean(<T>) vs v_max/c figure for the manuscript,
     % sized and styled for Physica Scripta: single-column width, serif
@@ -440,11 +462,7 @@ function export_manuscript_mean_figure(state_label, export_dir, run_filter, ...
     grid(ax, 'on');
     hold(ax, 'off');
 
-    if strcmp(run_filter, 'common')
-        pdf_name = ['cutoff_scan_kinetic_' state_label '_manuscript.pdf'];
-    else
-        pdf_name = ['cutoff_scan_kinetic_' state_label '_' run_filter '_manuscript.pdf'];
-    end
+    pdf_name = ['cutoff_scan_kinetic_' state_label '_manuscript.pdf'];
     exportgraphics(fig, fullfile(export_dir, pdf_name), 'ContentType', 'vector');
     fprintf('%s written\n', fullfile(export_dir, pdf_name));
 end
@@ -512,6 +530,62 @@ function plot_dt_grouped_line(v_over_c, y_value, dt_zs, marker)
              'DisplayName', sprintf('$\\Delta t = %s$ s', dt_seconds_latex(dts(g))));
     end
     hold off;
+end
+
+function plot_trajectory_points_panel(v_over_c, T_per_traj_cell, dt_zs, T_analytical)
+    % Scatter every per-trajectory time-averaged kinetic energy at x = v_max/c
+    % (log axis). Points are grouped by dt (colour) with a multiplicative
+    % per-dt x-offset and per-point jitter so the clouds separate, and the
+    % per-file mean (diamond) and median (thick tick) are overlaid. Reuses the
+    % per-trajectory vectors already loaded by the caller.
+    ax = gca;
+    hold(ax, 'on');
+    set(ax, 'XScale', 'log');
+
+    colors = line_colors(numel(unique(dt_zs)));
+    dts = sort(unique(dt_zs));
+    nd = numel(dts);
+    group_handles = gobjects(nd, 1);
+    assigned = false(nd, 1);
+    rng(1);   % reproducible jitter
+
+    for gi = 1:nd
+        col = colors(gi, :);
+        % multiplicative x-offset per dt group so the clouds separate on the
+        % log axis; the offset is symmetric about the true v_max/c.
+        x_off = exp(0.08 * (gi - (nd + 1) / 2));
+        idx = find(dt_zs == dts(gi));
+        for j = 1:numel(idx)
+            k = idx(j);
+            y = T_per_traj_cell{k};
+            xc = v_over_c(k) * x_off;
+            x = xc * exp(0.025 * randn(size(y)));      % per-point jitter
+            h = scatter(ax, x, y, 10, col, 'filled', ...
+                        'MarkerFaceAlpha', 0.30, 'MarkerEdgeColor', 'none', ...
+                        'HandleVisibility', 'off');
+            if ~assigned(gi)
+                group_handles(gi) = h;
+                assigned(gi) = true;
+                set(h, 'HandleVisibility', 'on', ...
+                       'DisplayName', sprintf('$\\Delta t = %s$ s', ...
+                                              dt_seconds_latex(dts(gi))));
+            end
+            % per-file mean (diamond) and median (thick tick)
+            plot(ax, xc, mean(y), 'd', 'MarkerSize', 7, ...
+                 'MarkerFaceColor', col, 'MarkerEdgeColor', 'k', ...
+                 'LineWidth', 0.8, 'HandleVisibility', 'off');
+            plot(ax, xc * [1/1.06, 1.06], median(y) * [1, 1], '-', ...
+                 'Color', max(col - 0.15, 0), 'LineWidth', 2.2, ...
+                 'HandleVisibility', 'off');
+        end
+    end
+
+    xlabel(ax, '$v_{\max}/c$', 'Interpreter', 'latex');
+    ylabel(ax, '$\left< T \right>_j$ per trajectory (J)', 'Interpreter', 'latex');
+    grid(ax, 'on');
+    draw_horizontal_line(T_analytical, '-.', [0.60, 0.00, 0.00]);
+    legend(ax, 'show', 'Interpreter', 'latex', 'Location', 'best', 'Box', 'off');
+    hold(ax, 'off');
 end
 
 function require_field(S, field_name, mat_name)

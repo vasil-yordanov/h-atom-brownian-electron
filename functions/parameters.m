@@ -44,7 +44,7 @@ function [n, l, m, n_steps, dt, traj_points, sigma_r_factor, M, v_max_over_c] = 
             total_time = 1e-11;
         elseif ~isempty(regexp(parameters_set, '^2s0_scan_vmax_', 'once'))
             n=2; l=0; m=0;
-            total_time = 1e-11;
+            total_time = 2e-11;
         else
             error('The scan parameter set "%s" is not defined.', parameters_set);
         end

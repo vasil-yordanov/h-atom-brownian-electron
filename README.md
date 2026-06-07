@@ -330,52 +330,37 @@ clear; addpath('functions');
 h_atom_post_processing
 ```
 
-For cutoff sweeps, the post-processing can be run directly after all sweep
-points for a state have finished:
+## Cutoff-sweep post-processing
+
+Once all sweep points for a state have finished, `analyse_cutoff_scan` builds
+the cutoff-scan figures:
+
+```Matlab
+analyse_cutoff_scan(state_label, export_dir, data_root, mode)
+%   state_label : '2s0' or '2p0'
+%   export_dir  : output directory       (default 'figures')
+%   data_root   : directory of scan runs (default 'data')
+%   mode        : 'default' or 'extended' (default 'default')
+```
+
+It loads **every** scan run found under `data_root` (all seeds pooled). To
+analyse a different dataset — only one seed, or runs at a different total time
+— point `data_root` at a directory (or symlink folder) holding just those runs.
+
+- **`'default'`** prints the convergence tables and exports the single-panel
+  manuscript figure `cutoff_scan_kinetic_<state>_manuscript.pdf` (Fig. 9, the
+  mean ⟨T⟩ vs `v_max/c` with one curve per `dt`, bootstrap error bars).
+- **`'extended'`** instead exports the diagnostic 6-panel figure
+  `cutoff_scan_kinetic_<state>.pdf`: (a) mean ± bootstrap SE, (b) median ±
+  bootstrap SE, (c) all per-trajectory points, (d) nodal crossing rate,
+  (e) running-mean error, (f) running trajectory scatter. Because the nodal
+  kinetic energy is heavy-tailed (Lomax), error bars use a nonparametric
+  bootstrap rather than the classical SEM/IQR.
 
 ```Matlab
 clear; addpath('functions');
-analyse_cutoff_scan('2p0', 'figures');
-analyse_cutoff_scan('2s0', 'figures');
-```
-
-To analyse a single seed only, pass the seed-specific run filter after all
-three runs for that seed finish:
-
-```Matlab
-clear; addpath('functions');
-analyse_cutoff_scan('2s0', 'figures/seed_101', ...
-                    'data', 'seed_101');
-```
-
-This reads the folders matching `data/2s0_scan_vmax_*_seed_101` and writes:
-
-```text
-figures/seed_101/cutoff_scan_kinetic_2s0_seed_101.pdf
-figures/seed_101/cutoff_scan_crossings_2s0_seed_101.pdf
-```
-
-To pool every seed available under `data/` on the same plots, use `'all'`
-(the default filter loads all seeds as well):
-
-```Matlab
-clear; addpath('functions');
-analyse_cutoff_scan('2s0', 'figures/all_seeds', 'data', 'all');
-```
-
-In this combined plot, the common-random sweep is drawn as connected curves,
-while independent-seed runs are overlaid as unconnected markers. This allows
-independent checks with different seeds at different cutoff values without
-mixing them into one artificial sweep curve.
-
-This writes the cutoff sensitivity and crossing-count figures to `figures/`,
-including:
-
-```text
-figures/cutoff_scan_kinetic_2p0.pdf
-figures/cutoff_scan_crossings_2p0.pdf
-figures/cutoff_scan_kinetic_2s0.pdf
-figures/cutoff_scan_crossings_2s0.pdf
+analyse_cutoff_scan('2s0', 'figures');              % Fig. 9
+analyse_cutoff_scan('2s0', 'figures', 'data', 'extended');  % 6-panel diagnostic
 ```
 
 If `h_atom_post_processing` is called with `params_set_name` set to a scan
