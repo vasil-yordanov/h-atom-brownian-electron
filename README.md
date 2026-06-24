@@ -1,385 +1,15 @@
 # Description
-This repository contains the source code for simulating the hydrogen atom using 
+This repository contains the source code for simulating the hydrogen atom using
 Stochastic Mechanics to model the electron’s behavior through Brownian motion.
 
-For more details on the methodology, see the related paper on arXiv: 
+For more details on the methodology, see the related paper on arXiv:
 [Hydrogen Atom Simulation through Stochastic Mechanics](https://arxiv.org/abs/2412.19918v1).
-
-# Machine Specifications
-
-The simulation was tested on the following system:
-
-- **Processor**: Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz (6 Cores, 12 Threads)
-- **RAM**: 16.0 GB
-
-The timing results provided below are specific to this machine configuration
-and may vary on systems with different specifications.
-
-# Add functions directory to the path
-Assuming you are in the home directory of the project execute:
-```Matlab
-addpath('functions');
-```
-
-# Running the simulation
-
-```Matlab
-% Each simulation starts from a clean workspace. The search path persists
-% across `clear`, but re-adding it keeps each block independently runnable.
-
-% The simulation below will took around 15 min. t_final=1e-15 s.
-clear; addpath('functions');
-params_set_name='1s0_1fs';
-h_atom
-
-% The simulation below tooks around 50 minutes. t_final=1e-12 s.
-clear; addpath('functions');
-params_set_name='1s0_1ps';
-h_atom
-
-% The simulation below tooks around 6 hours. t_final=1e-11 s
-clear; addpath('functions');
-params_set_name='2p0_10ps';
-h_atom
-
-% The simulation below tooks around 6 hours. t_final=1e-11 s
-clear; addpath('functions');
-params_set_name='2s0_10ps';
-h_atom
-
-% Optional
-% The simulation below tooks around 50 min. t_final=1e-12 s
-clear; addpath('functions');
-params_set_name='2p_m1_1ps';
-h_atom
-
-% Matching comparison case with m=0
-clear; addpath('functions');
-params_set_name='2p_m0_1ps';
-h_atom
-
-% Same density as m=1 but opposite circulation
-clear; addpath('functions');
-params_set_name='2p_mn1_1ps';
-h_atom
-```
-
-# Running the cutoff-velocity sweep
-
-The cutoff sweep scans the velocity cap `v_max/c` for the nodal states
-`(n,l,m)=(2,1,0)` and `(2,0,0)`.  The scan runs use `M=100` trajectories and
-`traj_points=1`; the integration step `dt` is given explicitly in the set name
-(here `10zs` = `1e-20 s`, giving `n_steps=1e9`).  They store the energy-error
-time series, nodal crossing counts, occupation fractions, and cutoff
-engagement fractions in the output `.mat` file.
-
-First run a short smoke test:
-
-```Matlab
-clear; addpath('functions');
-params_set_name='test_scan_vmax_1p0c_dt_10zs';
-h_atom
-```
-
-Then run the `(2,1,0)` sweep one point at a time:
-
-```Matlab
-clear; addpath('functions');
-params_set_name='2p0_scan_vmax_0p01c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-params_set_name='2p0_scan_vmax_0p03c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-params_set_name='2p0_scan_vmax_0p1c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-params_set_name='2p0_scan_vmax_0p3c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-params_set_name='2p0_scan_vmax_1p0c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-params_set_name='2p0_scan_vmax_2p0c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-params_set_name='2p0_scan_vmax_3p0c_dt_10zs';
-h_atom
-```
-
-Run the `(2,0,0)` sweep one point at a time:
-
-```Matlab
-clear; addpath('functions');
-params_set_name='2s0_scan_vmax_0p01c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-params_set_name='2s0_scan_vmax_0p03c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-params_set_name='2s0_scan_vmax_0p1c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-params_set_name='2s0_scan_vmax_0p3c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-params_set_name='2s0_scan_vmax_1p0c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-params_set_name='2s0_scan_vmax_2p0c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-params_set_name='2s0_scan_vmax_3p0c_dt_10zs';
-h_atom
-```
-
-For parallel runs, start separate MATLAB sessions and set one
-`params_set_name` per session, for example:
-
-```Matlab
-clear; addpath('functions');
-params_set_name='2p0_scan_vmax_1p0c_dt_10zs';
-h_atom
-```
-
-The scan presets keep `traj_points=1` because the sweep is a statistical
-energy-error test, not a trajectory-visualisation run.
-
-Multi-trajectory runs (`M > 1`, i.e. all `*_scan_*` presets) use an
-independent-seed design: the RNG seed is set by `random_seed` (default `7`)
-and is appended to the run folder name as the last token, e.g.
-`data/2s0_scan_vmax_1p0c_dt_10zs_seed_101/`. The scan folder name is rebuilt
-from the effective `v_max/c` and `dt`, so it always carries both tags. Each
-seed is stored in its own folder, so seed replicates never overwrite one
-another. (Single-trajectory runs, `M == 1`, always use the fixed seed `7` and
-are left untagged.)
-
-For example, to test the `(2,0,0)` state at `v_max/c = 0.1, 1.0, 3.0` with
-seed 101, run the following commands in MATLAB:
-
-```Matlab
-clear; addpath('functions');
-random_seed = 101;   % set after each clear so the seed survives
-params_set_name='2s0_scan_vmax_0p1c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-random_seed = 101;
-params_set_name='2s0_scan_vmax_1p0c_dt_10zs';
-h_atom
-
-clear; addpath('functions');
-random_seed = 101;
-params_set_name='2s0_scan_vmax_3p0c_dt_10zs';
-h_atom
-```
-
-These three runs write to:
-
-```text
-data/2s0_scan_vmax_0p1c_dt_10zs_seed_101/
-data/2s0_scan_vmax_1p0c_dt_10zs_seed_101/
-data/2s0_scan_vmax_3p0c_dt_10zs_seed_101/
-```
-
-Repeat the same three commands with another `random_seed` if additional
-independent replicates are needed.
-
-# Running the time-step (dt) sweep
-
-To check that the results are converged with respect to the integration time
-step, sweep the `dt` tag of the unified scan sets at the production cutoff
-`v_max/c = 1.0`.  Like the cutoff sweep these use `M=100` trajectories and
-`traj_points=1` (a statistical energy test, not a trajectory-visualisation
-run).  The **total simulated time is held fixed** (equal physical time across
-all sweep points): `n_steps` is rescaled automatically from `dt`, so every
-point covers the same physical duration.
-
-Both `v_max/c` and `dt` are encoded in the set name, and `dt` is required.  `dt`
-is given in zeptoseconds (`1 zs = 1e-21 s`), with `p` for the decimal point.
-For example `_dt_100zs` → `1e-19 s`, `_dt_1zs` → `1e-21 s`, `_dt_0p5zs` →
-`5e-22 s`.  For `2p0`/`2s0` the fixed total time is `1e-11 s`, so `dt=10 zs`
-reproduces the production `n_steps=1e9`.
-
-First run a short smoke test (total time `1e-13 s`):
-
-```Matlab
-clear; addpath('functions');
-params_set_name='test_scan_vmax_1p0c_dt_10zs';
-h_atom
-```
-
-Then run the `(2,1,0)` dt sweep one point at a time — about six logarithmically
-spaced steps around the default `10 zs` (`random_seed` is set after each clear
-so it survives, tagging the multi-trajectory runs):
-
-```Matlab
-clear; addpath('functions'); random_seed = 101;
-params_set_name='2p0_scan_vmax_1p0c_dt_100zs';   % coarsest, n_steps=1e8
-h_atom
-
-clear; addpath('functions'); random_seed = 101;
-params_set_name='2p0_scan_vmax_1p0c_dt_50zs';    % n_steps=2e8
-h_atom
-
-clear; addpath('functions'); random_seed = 101;
-params_set_name='2p0_scan_vmax_1p0c_dt_10zs';    % baseline, n_steps=1e9
-h_atom
-
-clear; addpath('functions'); random_seed = 101;
-params_set_name='2p0_scan_vmax_1p0c_dt_5zs';     % n_steps=2e9
-h_atom
-
-clear; addpath('functions'); random_seed = 101;
-params_set_name='2p0_scan_vmax_1p0c_dt_2zs';     % n_steps=5e9
-h_atom
-
-clear; addpath('functions'); random_seed = 101;
-params_set_name='2p0_scan_vmax_1p0c_dt_1zs';     % finest, n_steps=1e10
-h_atom
-```
-
-The `(2,0,0)` sweep is the same with the `2s0_` prefix:
-
-```Matlab
-clear; addpath('functions'); random_seed = 101;
-params_set_name='2s0_scan_vmax_1p0c_dt_100zs';
-h_atom
-% ... 50zs, 10zs, 5zs, 2zs, 1zs (each preceded by: clear; addpath('functions'); random_seed = 101;) ...
-clear; addpath('functions'); random_seed = 101;
-params_set_name='2s0_scan_vmax_1p0c_dt_1zs';
-h_atom
-```
-
-These runs write to their own folders, e.g. (with `random_seed = 101`):
-
-```text
-data/2p0_scan_vmax_1p0c_dt_100zs_seed_101/
-data/2p0_scan_vmax_1p0c_dt_50zs_seed_101/
-data/2p0_scan_vmax_1p0c_dt_10zs_seed_101/
-data/2p0_scan_vmax_1p0c_dt_5zs_seed_101/
-data/2p0_scan_vmax_1p0c_dt_2zs_seed_101/
-data/2p0_scan_vmax_1p0c_dt_1zs_seed_101/
-```
-
-**Runtime note:** because the total simulated time is held fixed, the step
-count (and therefore the wall-clock time) scales as `1/dt`.  Halving `dt`
-doubles `n_steps`; the `1 zs` point runs ~10x longer than the `10 zs`
-baseline.  For parallel runs, start separate MATLAB sessions and set one
-`params_set_name` per session.
-
-To add a sweep point, just use a new `dt` (or `v_max/c`) tag in the set name —
-no edit to `parameters.m` is required; both values are parsed from the name.
-
-## Quick dt / v_max override
-
-`dt_override` and `vmax_override` change the integration step or the velocity
-cutoff at run time without defining a new set name.  Set either (or both) in the
-workspace before calling `h_atom`:
-
-- `dt_override` (seconds) replaces `dt` and rescales `n_steps` to keep the
-  physical duration fixed.
-- `vmax_override` (in units of `c`) replaces `v_max/c`.
-
-For a **scan set** the output folder name is rebuilt from the *effective*
-(post-override) `v_max/c` and `dt`, so it always reflects what actually ran and
-never overwrites the un-overridden run:
-
-```Matlab
-clear; addpath('functions');
-params_set_name='2s0_scan_vmax_1p0c_dt_10zs';
-dt_override = 5e-21;     % -> dt tag 5zs
-vmax_override = 3.0;     % -> vmax tag 3p0c
-h_atom
-% writes data/2s0_scan_vmax_3p0c_dt_5zs_seed_7/
-% (the next run's leading `clear` removes dt_override / vmax_override)
-```
-
-For a **non-scan preset** (e.g. `2p0_10ps`) the override appends a `_dt_<d>zs`
-(and/or `_vmax_<v>c`) tag to the preset name so the baseline run is not
-overwritten.  Note this keeps the preset's own `M` and `traj_points` (for
-`2p0_10ps` that is `M=1` and a large `traj_points`, i.e. a single-trajectory
-visualisation run, not the `M=100` statistical sweep above):
-
-```Matlab
-clear; addpath('functions');
-params_set_name='2p0_10ps';
-dt_override = 5e-21;
-h_atom
-% writes data/2p0_10ps_dt_5zs/
-% (the next run's leading `clear` restores the preset's built-in dt)
-```
-
-# Post processing
-The simulation will creata 'data' directory for every parameters set. 
-The post processing tooks around 5 min.
-```Matlab
-clear; addpath('functions');
-h_atom_post_processing
-```
-
-## Cutoff-sweep post-processing
-
-Once all sweep points for a state have finished, `analyse_cutoff_scan` builds
-the cutoff-scan figures:
-
-```Matlab
-analyse_cutoff_scan(state_label, export_dir, data_root, mode)
-%   state_label : '2s0' or '2p0'
-%   export_dir  : output directory       (default 'figures')
-%   data_root   : directory of scan runs (default 'data')
-%   mode        : 'default' or 'extended' (default 'default')
-```
-
-It loads **every** scan run found under `data_root` (all seeds pooled). To
-analyse a different dataset — only one seed, or runs at a different total time
-— point `data_root` at a directory (or symlink folder) holding just those runs.
-
-- **`'default'`** prints the convergence tables and exports the single-panel
-  manuscript figure `cutoff_scan_kinetic_<state>_manuscript.pdf` (Fig. 9, the
-  mean ⟨T⟩ vs `v_max/c` with one curve per `dt`, bootstrap error bars).
-- **`'extended'`** instead exports the diagnostic 6-panel figure
-  `cutoff_scan_kinetic_<state>.pdf`: (a) mean ± bootstrap SE, (b) median ±
-  bootstrap SE, (c) all per-trajectory points, (d) nodal crossing rate,
-  (e) running-mean error, (f) running trajectory scatter. Because the nodal
-  kinetic energy is heavy-tailed (Lomax), error bars use a nonparametric
-  bootstrap rather than the classical SEM/IQR.
-
-```Matlab
-clear; addpath('functions');
-analyse_cutoff_scan('2s0', 'figures');              % Fig. 9
-analyse_cutoff_scan('2s0', 'figures', 'data', 'extended');  % 6-panel diagnostic
-```
-
-If `h_atom_post_processing` is called with `params_set_name` set to a scan
-run, it also checks whether all cutoff points for that state are present and
-regenerates the scan figures when the sweep is complete.
 
 # Results
 
-**Note:** Due to the performance of the movie, we do not show the detailed trajectory of the particle
-for later moments (see [plot_trajectory_3d.m](functions/plot_trajectory_3d.m)), the algorithm is:
-```
-  if ~show_all
-        % Calculate the step size, ensuring it's at least 1
-        every = max(floor(traj_points / 1e6), 1);
-        idx = 1:every:m;
-    else
-        idx = 1:m;
-    end
-```
+**Note:** Due to the performance of the movie, we do not show the detailed
+trajectory of the particle for later moments (see
+[plot_trajectory_3d.m](functions/plot_trajectory_3d.m)).
 
 ## Brownian motion on sphere with Bohr radius
 [![Brownian motion on sphere](movies/1s0_1fs.gif)](movies/1s0_1fs.gif)
@@ -387,14 +17,337 @@ for later moments (see [plot_trajectory_3d.m](functions/plot_trajectory_3d.m)), 
 ## $(n,l,m)=(1,0,0)$ state
 [![1s0_state](movies/1s0_1ps.gif)](movies/1s0_1ps.gif)
 
+The electron's initial position is intentionally chosen far from the nucleus, at
+spherical coordinates $(10\,a_0,\ \pi/2,\ 0)$, to demonstrate the drift toward
+the nucleus.
+
 ##  $(n,l,m)=(2,1,0)$ state
 [![2p0_state](movies/2p0_10ps.gif)](movies/2p0_10ps.gif)
 
 ## $(n,l,m)=(2,1,1)$ state
 [![2p1_state](movies/2p1_1ps.gif)](movies/2p1_1ps.gif)
 
-Recommended preset labels: `2p_m0_1ps`, `2p_m1_1ps`, `2p_mn1_1ps`. The legacy names `2p0_1ps` and `2p1_1ps` remain available as aliases.
-
-
 ## $(n,l,m)=(2,0,0)$ state
 [![2s0_state](movies/2s0_10ps.gif)](movies/2s0_10ps.gif)
+
+Recommended preset labels: `2p_m0_1ps`, `2p_m1_1ps`, `2p_mn1_1ps`. The legacy names `2p0_1ps` and `2p1_1ps` remain available as aliases.
+
+## Phase-driven azimuthal circulation ($m = \pm 1, 0$)
+
+The $m=+1$ and $m=-1$ states circulate in opposite directions while $m=0$ does
+not. Looking straight down the $+z$ axis, the electron (dark dot, fading comet
+tail) sweeps counter-clockwise for $m=+1$, clockwise for $m=-1$, and shows no
+net sense of rotation for $m=0$:
+
+<a href="movies/2p_pm1_azimuthal_current_3panel.gif"><img src="movies/2p_pm1_azimuthal_current_3panel.gif" width="70%"></a>
+
+How to reproduce everything is below: first
+[run the simulations](#running-the-simulations), then
+[generate the README figures](#generating-the-readme-figures) (the movies above)
+and the [manuscript figures](#generating-the-manuscript-figures).
+
+# Machine Specifications
+
+The simulation was run on a **MacBook Pro** (`MacBookPro18,1`), **Apple M1 Pro**
+(10 cores: 8 performance + 2 efficiency), **16 GB** RAM, macOS 15.3.1. The run
+times quoted in this README are specific to this machine and will vary on other
+hardware.
+
+# Running the simulations
+
+Every simulation and figure is produced by a `matlab -batch` one-liner. On macOS
+the binary may be at `/Applications/MATLAB_R2024b.app/bin/matlab`, so use your
+own path. Each run writes a `data/<run>/` folder (its `.mat` data and, for the
+production runs, an `.mp4` dashboard movie).
+
+## Production runs (Figs 1-10 and the movies)
+
+Single-trajectory runs (`M=1`); the seed is fixed to `7` automatically, so no
+`random_seed` is needed.
+
+```bash
+matlab -batch 'addpath("functions"); params_set_name="1s0_1fs";   h_atom'   # ~16 min
+matlab -batch 'addpath("functions"); params_set_name="1s0_1ps";   h_atom'   # ~30 min
+matlab -batch 'addpath("functions"); params_set_name="2p0_10ps";  h_atom'   # ~2.9 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_10ps";  h_atom'   # ~2.9 h
+matlab -batch 'addpath("functions"); params_set_name="2p_m1_1ps"; h_atom'   # ~27 min
+matlab -batch 'addpath("functions"); params_set_name="2p_m0_1ps"; h_atom'   # ~33 min
+matlab -batch 'addpath("functions"); params_set_name="2p_mn1_1ps"; h_atom'  # ~37 min
+```
+
+## Cutoff scan, (2,0,0) state (Fig. 11)
+
+Statistical runs with `M=100` trajectories and `traj_points=1`, fixed total time
+`T = 2e-11 s` (20 ps); `n_steps = T/dt` is set automatically. The grid is the
+eight cutoffs `v_max/c = 0.01, 0.03, 0.1, 0.3, 1, 2, 3, 5` and the four steps
+`dt = 5, 10, 50, 100 zs`, so 32 runs. Each line below carries the exact
+`random_seed` used in the published figure.
+
+```bash
+# dt = 5 zs  (~28 h each)
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p01c_dt_5zs"; random_seed=7379; h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p03c_dt_5zs"; random_seed=2757; h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p1c_dt_5zs";  random_seed=1115; h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p3c_dt_5zs";  random_seed=1213; h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_1p0c_dt_5zs";  random_seed=1008; h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_2p0c_dt_5zs";  random_seed=1005; h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_3p0c_dt_5zs";  random_seed=1007; h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_5p0c_dt_5zs";  random_seed=1009; h_atom'   # ~28 h
+
+# dt = 10 zs  (~14 h each)
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p01c_dt_10zs"; random_seed=82379; h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p03c_dt_10zs"; random_seed=41757; h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p1c_dt_10zs";  random_seed=3227;  h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p3c_dt_10zs";  random_seed=3999;  h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_1p0c_dt_10zs";  random_seed=3001;  h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_2p0c_dt_10zs";  random_seed=3005;  h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_3p0c_dt_10zs";  random_seed=3007;  h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_5p0c_dt_10zs";  random_seed=3009;  h_atom'   # ~14 h
+
+# dt = 50 zs  (~3 h each)
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p01c_dt_50zs"; random_seed=7913; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p03c_dt_50zs"; random_seed=7815; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p1c_dt_50zs";  random_seed=7773; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p3c_dt_50zs";  random_seed=7313; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_1p0c_dt_50zs";  random_seed=5213; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_2p0c_dt_50zs";  random_seed=5315; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_3p0c_dt_50zs";  random_seed=5513; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_5p0c_dt_50zs";  random_seed=5713; h_atom'   # ~3 h
+
+# dt = 100 zs  (~1.4 h each)
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p01c_dt_100zs"; random_seed=8113;  h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p03c_dt_100zs"; random_seed=8217;  h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p1c_dt_100zs";  random_seed=8111;  h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_0p3c_dt_100zs";  random_seed=8819;  h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_1p0c_dt_100zs";  random_seed=98223; h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_2p0c_dt_100zs";  random_seed=98335; h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_3p0c_dt_100zs";  random_seed=99121; h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2s0_scan_vmax_5p0c_dt_100zs";  random_seed=99819; h_atom'   # ~1.4 h
+```
+
+## Cutoff scan, (2,1,0) state (Fig. 11 companion)
+
+Same grid and parameters with the `2p0_` prefix.
+
+```bash
+# dt = 5 zs  (~28 h each)
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p01c_dt_5zs"; random_seed=9359;  h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p03c_dt_5zs"; random_seed=2359;  h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p1c_dt_5zs";  random_seed=67870; h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p3c_dt_5zs";  random_seed=8432;  h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_1p0c_dt_5zs";  random_seed=34117; h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_2p0c_dt_5zs";  random_seed=26418; h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_3p0c_dt_5zs";  random_seed=87576; h_atom'   # ~28 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_5p0c_dt_5zs";  random_seed=23870; h_atom'   # ~28 h
+
+# dt = 10 zs  (~14 h each)
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p01c_dt_10zs"; random_seed=83356; h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p03c_dt_10zs"; random_seed=37576; h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p1c_dt_10zs";  random_seed=31418; h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p3c_dt_10zs";  random_seed=31117; h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_1p0c_dt_10zs";  random_seed=1118;  h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_2p0c_dt_10zs";  random_seed=2109;  h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_3p0c_dt_10zs";  random_seed=2129;  h_atom'   # ~14 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_5p0c_dt_10zs";  random_seed=2669;  h_atom'   # ~14 h
+
+# dt = 50 zs  (~3 h each)
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p01c_dt_50zs"; random_seed=6519; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p03c_dt_50zs"; random_seed=6577; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p1c_dt_50zs";  random_seed=6588; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p3c_dt_50zs";  random_seed=2212; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_1p0c_dt_50zs";  random_seed=7718; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_2p0c_dt_50zs";  random_seed=7878; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_3p0c_dt_50zs";  random_seed=7919; h_atom'   # ~3 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_5p0c_dt_50zs";  random_seed=9879; h_atom'   # ~3 h
+
+# dt = 100 zs  (~1.4 h each)
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p01c_dt_100zs"; random_seed=88576; h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p03c_dt_100zs"; random_seed=87576; h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p1c_dt_100zs";  random_seed=39576; h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_0p3c_dt_100zs";  random_seed=73870; h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_1p0c_dt_100zs";  random_seed=39879; h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_2p0c_dt_100zs";  random_seed=39870; h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_3p0c_dt_100zs";  random_seed=79879; h_atom'   # ~1.4 h
+matlab -batch 'addpath("functions"); params_set_name="2p0_scan_vmax_5p0c_dt_100zs";  random_seed=76879; h_atom'   # ~1.4 h
+```
+
+Each run writes to its own folder `data/<set>_seed_<seed>/`. Run points in
+parallel by launching one command per MATLAB session.
+
+## Cutoff sweep run time
+
+The total simulated time is fixed at `T = 2e-11 s` (20 ps), so the number of
+steps is `n_steps = T/dt` and the run time scales as `1/dt`, almost independent
+of `v_max/c`. The measured `dt = 5 zs` runs took about 25.8 to 29.6 h (around
+28.5 h on average, about 2.57e-5 s/step at `n_steps = 4e9`). Running 8 runs at a
+time (one MATLAB session per core), the eight `v_max/c` points of a given `dt`
+finish in about one per-run time:
+
+| dt | n_steps | per run | one batch of 8 (parallel) |
+|------|-----------|---------|---------------------------|
+| 5 zs   | 4e9 | ~28.5 h | ~28.5 h |
+| 10 zs  | 2e9 | ~14.3 h | ~14.3 h |
+| 50 zs  | 4e8 | ~2.9 h  | ~2.9 h  |
+| 100 zs | 2e8 | ~1.4 h  | ~1.4 h  |
+
+Running the four dt batches one after another, one state (32 runs) takes about
+28.5 + 14.3 + 2.9 + 1.4 = about 47 h (~2 days), and both states (64 runs) about
+94 h (~3.9 days). The estimates are good to about +/-15%.
+
+# Generating the README figures
+
+These are the movies and image shown in [Results](#results). Run the relevant
+[simulations](#running-the-simulations) first.
+
+## State movies
+
+Every production run writes its 6-panel dashboard as an MP4 to
+`data/<run>/<run>.mp4` (this is on by default; set `make_live_plots = false` in
+`h_atom.m` to skip it). Convert each MP4 to a GIF with
+[ffmpeg](https://ffmpeg.org) (`brew install ffmpeg`). The dashboard is rendered
+at 1200 px wide so the six panels stay legible; `dither=none` keeps the flat
+background clean. The four long movies are sampled to 5 fps (to keep the GIF
+size reasonable at this resolution); the short (2,1,1) run keeps its native rate:
+
+```bash
+export PAL="split[s0][s1];[s0]palettegen=max_colors=128:stats_mode=diff[p];[s1][p]paletteuse=dither=none:diff_mode=rectangle"
+ffmpeg -y -i data/1s0_1fs/1s0_1fs.mp4     -vf "fps=5,scale=1200:-1:flags=lanczos,$PAL" movies/1s0_1fs.gif
+ffmpeg -y -i data/1s0_1ps/1s0_1ps.mp4     -vf "fps=5,scale=1200:-1:flags=lanczos,$PAL" movies/1s0_1ps.gif
+ffmpeg -y -i data/2p0_10ps/2p0_10ps.mp4   -vf "fps=5,scale=1200:-1:flags=lanczos,$PAL" movies/2p0_10ps.gif
+ffmpeg -y -i data/2p_m1_1ps/2p_m1_1ps.mp4 -vf "fps=5,scale=1200:-1:flags=lanczos,$PAL" movies/2p1_1ps.gif
+ffmpeg -y -i data/2s0_10ps/2s0_10ps.mp4   -vf "fps=5,scale=1200:-1:flags=lanczos,$PAL" movies/2s0_10ps.gif
+```
+
+The four long movies (1 fs / 1 ps / 10 ps simulated) play over 100 s at 5 fps.
+The (2,1,1) movie is short and keeps its native frame rate. The run name and the
+GIF name differ only for that state:
+
+| State | Run (`params_set_name`) | MP4 written | GIF |
+|-------|-------------------------|-------------|-----|
+| Brownian sphere | `1s0_1fs`   | `data/1s0_1fs/1s0_1fs.mp4`     | `movies/1s0_1fs.gif`  |
+| (1,0,0) | `1s0_1ps`   | `data/1s0_1ps/1s0_1ps.mp4`     | `movies/1s0_1ps.gif`  |
+| (2,1,0) | `2p0_10ps`  | `data/2p0_10ps/2p0_10ps.mp4`   | `movies/2p0_10ps.gif` |
+| (2,1,1) | `2p_m1_1ps` | `data/2p_m1_1ps/2p_m1_1ps.mp4` | `movies/2p1_1ps.gif`  |
+| (2,0,0) | `2s0_10ps`  | `data/2s0_10ps/2s0_10ps.mp4`   | `movies/2s0_10ps.gif` |
+
+### Rebuilding a movie from saved data (no re-simulation)
+
+`make_dashboard_movie` regenerates a run's dashboard `.mp4` from the data the
+simulation already saved, so you can restyle the panels and rebuild in minutes
+instead of re-running the (hours-long) simulation.
+
+First rebuild the dashboard MP4s from the saved data (MATLAB):
+
+```bash
+matlab -batch 'make_dashboard_movie("1s0_1fs")'
+matlab -batch 'make_dashboard_movie("1s0_1ps")'
+matlab -batch 'make_dashboard_movie("2p0_10ps")'
+matlab -batch 'make_dashboard_movie("2s0_10ps")'
+matlab -batch 'make_dashboard_movie("2p_m1_1ps")' 
+```
+
+Then convert the MP4s to GIFs (ffmpeg):
+
+```bash
+export PAL="split[s0][s1];[s0]palettegen=max_colors=128:stats_mode=diff[p];[s1][p]paletteuse=dither=none:diff_mode=rectangle"
+ffmpeg -y -i data/1s0_1fs/1s0_1fs.mp4     -vf "$PAL" movies/1s0_1fs.gif
+ffmpeg -y -i data/1s0_1ps/1s0_1ps.mp4     -vf "$PAL" movies/1s0_1ps.gif
+ffmpeg -y -i data/2p0_10ps/2p0_10ps.mp4   -vf "$PAL" movies/2p0_10ps.gif
+ffmpeg -y -i data/2s0_10ps/2s0_10ps.mp4   -vf "$PAL" movies/2s0_10ps.gif
+ffmpeg -y -i data/2p_m1_1ps/2p_m1_1ps.mp4 -vf "$PAL" movies/2p1_1ps.gif
+```
+
+It writes the same `data/<run>/<run>.mp4` path as the live run. It is a replica
+of the live rendering loop in `h_atom.m`: it redraws each frame from the exact
+per-frame data the simulation stored (`hist_counts_*_traj`, the energy and
+distribution-deviation time series, and the trajectory), with the same plotting
+functions. The default arguments downsize to the GIF target (1200 px, 5 fps);
+pass `2100, 1` for the full-resolution, full-frame-rate exact replica of the
+live MP4 (`make_dashboard_movie("1s0_1fs", 2100, 1)`). The short `2p_m1_1ps` run
+only has 80 frames, so it uses `frame_stride = 1` to keep them all.
+
+**Both ways give the same movie.** The simulation stores each frame's dashboard
+state, and `make_dashboard_movie` feeds exactly those snapshots back into the
+same plot functions — so with `make_dashboard_movie("<run>", 2100, 1)` the result
+is identical to the movie the simulation wrote live; it does not matter which way
+you generate it. To confirm on your machine:
+
+```bash
+# (a) live movie written by the simulation
+matlab -batch 'addpath("functions"); params_set_name="1s0_1fs"; h_atom'
+cp data/1s0_1fs/1s0_1fs.mp4 /tmp/live.mp4
+
+# (b) movie rebuilt from the saved data, exact-replica settings
+matlab -batch 'make_dashboard_movie("1s0_1fs", 2100, 1)'
+cp data/1s0_1fs/1s0_1fs.mp4 /tmp/rebuilt.mp4
+
+# (c) compare frame 500 -- the max pixel difference should be ~0
+ffmpeg -y -i /tmp/live.mp4    -vf "select=eq(n\,500)" -frames:v 1 /tmp/live_500.png
+ffmpeg -y -i /tmp/rebuilt.mp4 -vf "select=eq(n\,500)" -frames:v 1 /tmp/rebuilt_500.png
+magick compare -metric AE /tmp/live_500.png /tmp/rebuilt_500.png /tmp/diff_500.png; echo
+```
+
+## Azimuthal-current comet movie
+
+`make_azimuthal_current_movie` reuses the three `2p_m*` runs and writes the
+top-down 3-panel frames under `$TMPDIR/azim_movie_frames/azim_3panel_2d`.
+Assemble them into a GIF with
+[ImageMagick](https://imagemagick.org) (`brew install imagemagick`):
+
+```bash
+matlab -batch 'addpath("functions"); make_azimuthal_current_movie'
+magick -delay 6 -loop 0 "$TMPDIR/azim_movie_frames/azim_3panel_2d/frame_"*.png movies/2p_pm1_azimuthal_current_3panel.gif
+```
+
+# Generating the manuscript figures
+
+All figures are written to `figures/`. Copy them next to the manuscript `.tex`
+before compiling. The table maps each figure to the runs it needs and the driver
+that builds it:
+
+| Fig. | Content | Required run(s) | Driver |
+|------|---------|-----------------|--------|
+| 1 | 1s electron on a sphere | `1s0_1fs` | `h_atom_post_processing` |
+| 2 | 3D electron cloud (1s, 2p0) | `1s0_1ps`, `2p0_10ps` | `h_atom_post_processing` (2p0 cloud is full-resolution, ~12 min) |
+| 3 | Distributions, 1s | `1s0_1ps` | `h_atom_post_processing` |
+| 4 | Distributions, 2p0 | `2p0_10ps` | `h_atom_post_processing` |
+| 5 | Distributions, (2,1,1) | `2p_m1_1ps` | `h_atom_post_processing` |
+| 6 | Polar convergence, 2p0 | `2p0_10ps` | `h_atom_post_processing` |
+| 7 | Radial convergence, 2s0 | `2s0_10ps` | `h_atom_post_processing` |
+| 8 | Distribution deviations | `2p0_10ps`, `2s0_10ps` | `h_atom_post_processing` |
+| 9 | Azimuthal circulation | `2p_m1_1ps`, `2p_m0_1ps`, `2p_mn1_1ps` | `make_azimuthal_current_figure` |
+| 10 | Energies vs time | `2p0_10ps`, `2s0_10ps` | `h_atom_post_processing` |
+| 11 | Kinetic-energy cutoff scan | `2s0`/`2p0` cutoff sweep (64 runs) | `analyse_cutoff_scan` |
+
+Once the required runs are present under `data/`:
+
+```bash
+# Figs 1-8, 10 (needs 1s0_1fs, 1s0_1ps, 2p0_10ps, 2p_m1_1ps, 2s0_10ps).
+# Includes Fig 2b (the full-resolution 2p0 cloud), which alone adds ~12 min.
+matlab -batch 'addpath("functions"); h_atom_post_processing'
+
+# Fig 9 (needs 2p_m1_1ps, 2p_m0_1ps, 2p_mn1_1ps)
+matlab -batch 'addpath("functions"); make_azimuthal_current_figure'
+
+# Fig 11 -- both panels: 2s0 = (2,0,0) left, 2p0 = (2,1,0) right (needs the cutoff sweeps above)
+matlab -batch "addpath('functions'); analyse_cutoff_scan('2s0','figures','data','default');" 
+matlab -batch "addpath('functions'); analyse_cutoff_scan('2p0','figures','data','default');"
+```
+
+By default `h_atom_post_processing` writes only the figures listed above. Set
+`extended = true` to also generate diagnostic `(2,1,m)` figures that are not used
+in the manuscript (per-state energies and xy clouds for the `m = 0, +1, -1`
+states):
+
+```bash
+matlab -batch 'addpath("functions"); extended=true; h_atom_post_processing'
+```
+
+`analyse_cutoff_scan` pools every scan run found under `data/` (one curve per
+`dt`, fixed y-range `[2, 9]x1e-19` J, analytic value as a dash-dot line) and
+writes `figures/<state>_cutoff_scan_kinetic_manuscript.pdf`. Pass `'extended'`
+as the 4th argument to get a 6-panel diagnostic figure instead.
+
+```bash
+matlab -batch "addpath('functions'); analyse_cutoff_scan('2s0','figures','data','extended')"
+```

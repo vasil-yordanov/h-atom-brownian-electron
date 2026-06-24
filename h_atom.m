@@ -94,12 +94,13 @@ if M > 1
     output_run_name = sprintf('%s_seed_%d', output_run_name, random_seed);
 end
 make_live_plots = true;
-% By default the 8 dashboard subplots (radial/polar/azimuthal histograms,
-% trajectory views, distribution deviation, energies-vs-time, azimuthal
-% current) use a single trajectory -- matching the original M = 1
-% behavior. The end-of-run per-trajectory energy diagnostic always uses all
-% M trajectories. Set to false to pool all M particles into the main plots
-% as well (cross-particle means + SEM bands).
+% By default the production dashboard is the 6-panel (2x3) layout
+% (radial/polar/azimuthal histograms, distribution deviation, energies-vs-time,
+% 3D trajectory) using a single trajectory -- matching the original M = 1
+% behavior. (Kinetic-scan runs use a separate 8-panel diagnostic dashboard.)
+% The end-of-run per-trajectory energy diagnostic always uses all M
+% trajectories. Set to false to pool all M particles into the main plots as
+% well (cross-particle means + SEM bands).
 single_traj_main_plots = true;
 n_frames = 1000; % Total number of video frames
 if strcmp(params_set_name, '2p_m1_1ps') || strcmp(params_set_name, '2p1_1ps') || strcmp(params_set_name, '2p_m0_1ps') || strcmp(params_set_name, '2p0_1ps') || strcmp(params_set_name, '2p_mn1_1ps')
@@ -155,7 +156,7 @@ v_max = v_max_over_c * c;
 phi_unwrapped = phi;
 
 % Cutoff-scan diagnostics. The nodal-set diagnostics are enabled only for
-% the two states used in Appendix E; cutoff engagement is recorded for all
+% the two states used in Appendix F; cutoff engagement is recorded for all
 % states.
 N_cross_per_traj = zeros(M, 1);
 occupation_count_per_traj = zeros(M, 1);
@@ -587,18 +588,17 @@ for i = i_start:n_steps
                        'Location', 'northeast', 'Box', 'off');
                 grid on;
             else
-                subplot(2,4,1);
+                % Production-run dashboard: original 6-panel (2x3) layout.
+                subplot(2,3,1);
                 plot_radial_distribution(hist_bins_r, hist_counts_r, r_values, P_analytic_r);
-                subplot(2,4,2);
+                subplot(2,3,2);
                 plot_polar_distribution(hist_bins_theta, hist_counts_theta, theta_values, P_theta_analytic);
-                subplot(2,4,3);
+                subplot(2,3,3);
                 plot_azimuthal_distribution(hist_bins_phi, hist_counts_phi, phi_values, P_phi_analytic);
-                subplot(2,4,4);
-                plot_trajectory_3d(n, l, r_traj, theta_traj, phi_traj, a_0, i, params_set_name);
 
-                subplot(2,4,5);
+                subplot(2,3,4);
                 plot_distributions_deviation(time_arr(idx), dev_arr_R(idx), dev_arr_theta(idx), dev_arr_phi(idx));
-                subplot(2,4,6);
+                subplot(2,3,5);
                 if single_traj_main_plots
                     plot_energies(n, l, m, time_arr(idx), KE_radial_traj(idx), ...
                         KE_theta_traj(idx), KE_phi_traj(idx), V_traj(idx), E_traj(idx));
@@ -607,12 +607,8 @@ for i = i_start:n_steps
                         KE_radial_traj_M(:, idx), KE_theta_traj_M(:, idx), KE_phi_traj_M(:, idx), ...
                         V_traj_M(:, idx), E_traj_M(:, idx));
                 end
-
-                subplot(2,4,7);
-                plot_azimuthal_current(time_arr(idx), b_phi_avg_traj(idx), n, l, m);
-
-                subplot(2,4,8);
-                plot_trajectory_xy(n, l, r_traj, theta_traj, phi_traj, a_0, i, params_set_name);
+                subplot(2,3,6);
+                plot_trajectory_3d(n, l, r_traj, theta_traj, phi_traj, a_0, i, params_set_name);
             end
 
             annotation_text = sprintf('t = %.2e s', time_arr(frame_index));

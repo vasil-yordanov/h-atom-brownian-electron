@@ -30,8 +30,16 @@ function [] = plot_energies_with_bands(n, l, m, time_array, ...
     yline(expected_E_theta(l, m), 'LineStyle', '-', 'Color', [0, 1, 0], ...
         'LineWidth', 0.7, 'HandleVisibility', 'off');
     if use_robust_polar && n == 2 && l == 1 && m == 0
+        % For M = 1 (the manuscript figures) the median/IQR band is degenerate, so
+        % drop the "(median, IQR)" qualifier from the legend; keep it on the
+        % multi-trajectory dashboards where the band semantics matter.
+        if M > 1
+            theta_label = '$\left< E_\theta \right>$ (median, IQR)';
+        else
+            theta_label = '$\left< E_\theta \right>$';
+        end
         plot_median_iqr_band(time_array, KE_theta_traj_M, [0, 1, 0], '--', ...
-            '$\left< E_\theta \right>$ (median, IQR)');
+            theta_label);
     else
         plot_mean_band(time_array, KE_theta_traj_M, [0, 1, 0], '-', ...
             '$\left< E_\theta \right>$');
@@ -70,10 +78,15 @@ function [] = plot_energies_with_bands(n, l, m, time_array, ...
         ylim([-15e-19, 15e-19]);
     end
 
-    % Annotate M so the reader knows the band semantics.
-    text(0.02, 0.02, sprintf('M = %d trajectories', M), ...
-        'Units', 'normalized', 'FontSize', 10, ...
-        'BackgroundColor', [1 1 1 0.7], 'Margin', 2);
+    % Annotate the ensemble size so the reader knows the band semantics, but only
+    % for multi-trajectory runs (M > 1, the cutoff-scan dashboards). For the
+    % single-trajectory manuscript figures (M = 1) there are no bands, so the
+    % annotation is omitted -- state M = 1 in the figure caption instead.
+    if M > 1
+        text(0.02, 0.02, sprintf('M = %d trajectories', M), ...
+            'Units', 'normalized', 'FontSize', 10, ...
+            'BackgroundColor', [1 1 1 0.7], 'Margin', 2);
+    end
 end
 
 function plot_mean_band(t, X_M, color, line_style, display_name)

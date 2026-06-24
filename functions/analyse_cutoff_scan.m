@@ -1,17 +1,18 @@
-function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
+function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode, mix_time)
     % ANALYSE_CUTOFF_SCAN  Kinetic-energy cutoff scan post-processing.
     %
     % Usage:
-    %   analyse_cutoff_scan('2s0');                 % default: manuscript Fig. 9 only
+    %   analyse_cutoff_scan('2s0');                 % default: manuscript Fig. 11 only
     %   analyse_cutoff_scan('2s0', 'figures');
     %   analyse_cutoff_scan('2s0', 'figures', 'data', 'extended');
+    %   analyse_cutoff_scan('2s0', 'figures', 'data', 'default', true);  % mix total times
     %
     % Loads every scan .mat file under data_root (all seeds) and checks whether
     % the relevant kinetic-energy first moment is stable under changes in v_max.
     %
     % mode:
     %   'default'  (default) -- print the convergence tables and export only
-    %              the single-panel manuscript figure (Fig. 9).
+    %              the single-panel manuscript figure (Fig. 11).
     %   'extended' -- additionally export a 6-panel diagnostic figure:
     %              (a) mean +/- bootstrap SE, (b) median +/- bootstrap SE,
     %              (c) all per-trajectory points, (d) nodal crossing rate,
@@ -19,6 +20,16 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
     %              The mean/median panels deliberately show both mean/SEM and
     %              median/IQR views because the nodal kinetic energy is
     %              heavy-tailed.
+    %
+    % mix_time (default false) -- DIAGNOSTIC. When false the scan is expected to
+    %   share a single total simulated time and curves are grouped/labelled by
+    %   the integration step Delta t only. When true, runs with different total
+    %   times T are allowed on the same figure: curves are grouped by (Delta t, T)
+    %   so each connected line is still a single total time, the legend shows
+    %   both Delta t and T, and the output files get a '_mixtime' suffix so the
+    %   single-time manuscript figure is not overwritten. The per-trajectory mean
+    %   <T> is a per-step time average, so it is comparable across total times;
+    %   mixing is therefore meaningful for the mean/median/scatter panels.
 
     if nargin < 2
         export_dir = 'figures';
@@ -29,10 +40,21 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
     if nargin < 4
         mode = 'default';
     end
+    if nargin < 5 || isempty(mix_time)
+        mix_time = false;
+    end
+    if ischar(mix_time) || isstring(mix_time)
+        mix_time = any(strcmpi(char(mix_time), ...
+            {'mix', 'mixtime', 'mix_time', '--mix-max-time', 'true'}));
+    end
     if ~(strcmp(mode, 'default') || strcmp(mode, 'extended'))
         error('mode must be either ''default'' or ''extended''.');
     end
     extended = strcmp(mode, 'extended');
+    name_suffix = '';
+    if mix_time
+        name_suffix = '_mixtime';
+    end
     if ~exist(export_dir, 'dir')
         mkdir(export_dir);
     end
@@ -51,15 +73,35 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
         error('No scan .mat files found for state %s in %s.', state_label, data_root);
     end
 
-    % One curve per dt group, one point per (dt, v_max) cell: keep only the
-    % first file found in each cell and ignore any further seed replicates.
+    % One curve per dt group, one point per (dt, v_max) cell: keep the run
+    % with the LONGEST total simulated time in each cell (best statistics)
+    % and ignore any further seed replicates.
     % Untagged runs use the default dt = 10 zs (1e-20 s).
     pre_v = zeros(numel(files), 1);
     pre_dt = zeros(numel(files), 1);
+    pre_T = zeros(numel(files), 1);
     for k = 1:numel(files)
         [pre_v(k), ~, pre_dt(k)] = parse_vmax_from_filename(state_label, files(k).name);
+        try
+            q = load(fullfile(files(k).folder, files(k).name), 'n_steps', 'dt');
+            pre_T(k) = q.n_steps * q.dt;
+        catch
+            pre_T(k) = 0;
+        end
     end
-    [~, keep_first] = unique([pre_dt, pre_v], 'rows', 'stable');
+    [~, ord] = sort(pre_T, 'descend');
+    files = files(ord);
+    pre_v = pre_v(ord);
+    pre_dt = pre_dt(ord);
+    pre_T = pre_T(ord);
+    if mix_time
+        % Keep best seed per (dt, v_max, T-bucket); different total times
+        % are distinct curve points and must not be merged.
+        t_bucket = round(pre_T / 1e-13);
+        [~, keep_first] = unique([pre_dt, pre_v, t_bucket], 'rows', 'stable');
+    else
+        [~, keep_first] = unique([pre_dt, pre_v], 'rows', 'stable');
+    end
     files = files(keep_first);
 
     n_files = length(files);
@@ -83,6 +125,7 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
     T_min_per_traj = zeros(n_files, 1);
     M_count = zeros(n_files, 1);
     T_per_traj_cell = cell(n_files, 1);   % full per-trajectory vectors (scatter panel)
+    total_time = NaN(n_files, 1);         % total simulated time T = time_arr(end)
 
     % Bootstrap settings for the seed-to-seed estimator-uncertainty
     % error bars on panels (a) and (b). The heavy Lomax tail of T_r
@@ -139,6 +182,9 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
         T_min_per_traj(k) = min(T_per_traj);
         M_count(k) = length(T_per_traj);
         T_per_traj_cell{k} = T_per_traj(:);
+        if isfield(S, 'time_arr') && ~isempty(S.time_arr)
+            total_time(k) = S.time_arr(end);
+        end
         if isfield(S, 'N_cross_per_traj')
             N_cross_mean(k) = mean(S.N_cross_per_traj);
             N_cross_std(k) = std(S.N_cross_per_traj);
@@ -157,15 +203,20 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
                 % Compare time grids up to floating-point round-off. dt sweeps
                 % hold the total time fixed but set n_steps = round(total/dt),
                 % so grids that are physically identical can differ by ~1e-14
-                % relative. Only a genuine mismatch (different length, or a real
-                % difference in total simulated time) is treated as an error.
+                % relative. Runs with a genuinely different total simulated
+                % time are kept for the (time-independent) per-trajectory
+                % averages, but their running time series is skipped on the
+                % time-series diagnostic panels.
                 grid_scale = max(abs(time_arr_ref(:)));
                 if length(S.time_arr) ~= length(time_arr_ref) || ...
                         any(abs(S.time_arr(:) - time_arr_ref(:)) > 1e-9 * grid_scale)
-                    error(['Time grid differs in %s; rerun scan files with the ' ...
-                           'same total time and n_frames.'], mat_name);
+                    warning('Time grid differs in %s; skipping its running time series.', ...
+                            mat_name);
+                    T_time = [];
                 end
             end
+        end
+        if ~isempty(T_time)
             T_mean_time(k, :) = mean(T_time, 1); %#ok<AGROW>
             T_sem_time(k, :) = std(T_time, 0, 1) / sqrt(size(T_time, 1)); %#ok<AGROW>
         end
@@ -191,10 +242,18 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
     T_min_per_traj = T_min_per_traj(idx);
     M_count = M_count(idx);
     T_per_traj_cell = T_per_traj_cell(idx);
+    total_time = total_time(idx);
     if ~isempty(T_mean_time)
         T_mean_time = T_mean_time(idx, :);
         T_sem_time = T_sem_time(idx, :);
     end
+
+    % Curve grouping for the figures: by integration step Delta t alone
+    % (default), or by (Delta t, total time T) when mix_time is on so that
+    % runs of different total simulated time stay on separate, correctly
+    % labelled curves. group_id(k) is the group of point k; group_labels{g}
+    % is its legend string.
+    [group_id, group_labels] = make_curve_groups(dt_zs, total_time, mix_time);
 
     % Derived diagnostic quantities
     alpha_fs    = 7.2973525693e-3;           % fine-structure constant
@@ -253,11 +312,11 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
     if ~extended
         % -------------------------------------------------------------
         % Default deliverable: the manuscript figure (Physica Scripta
-        % style, Fig. 9) -- a single clean panel showing the mean only,
+        % style, Fig. 11) -- a single clean panel showing the mean only,
         % with one connected error-bar curve per dt group.
         % -------------------------------------------------------------
-        export_manuscript_mean_figure(state_label, export_dir, ...
-            v_over_c, T_mean, T_mean_se, dt_zs, T_analytical);
+        export_manuscript_mean_figure(state_label, export_dir, name_suffix, ...
+            v_over_c, T_mean, T_mean_se, group_id, group_labels, T_analytical);
         return;
     end
 
@@ -282,9 +341,9 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
     % SEM uses the empirical sample variance, which under the Lomax tail
     % (T_r for 2s0; T_theta for 2p0) is bounded only by the cutoff and
     % therefore understates true seed-to-seed uncertainty as v_max/c grows.
-    plot_dt_grouped_errorbar(v_over_c, T_mean, T_mean_se, T_mean_se, dt_zs, 'o');
+    plot_dt_grouped_errorbar(v_over_c, T_mean, T_mean_se, T_mean_se, group_id, group_labels, 'o');
     % Light whiskers: the classical SEM, kept as a descriptive overlay.
-    plot_light_whiskers(v_over_c, T_mean, T_sem, T_sem, dt_zs);
+    plot_light_whiskers(v_over_c, T_mean, T_sem, T_sem);
     set(gca, 'XScale', 'log');
     xlabel('$v_{\max}/c$', 'Interpreter', 'latex');
     ylabel('$\left< T \right>$ (J)', 'Interpreter', 'latex');
@@ -301,11 +360,10 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
     % within-sample spread statistic (converges to a finite population
     % IQR as M -> Inf) and does NOT quantify the uncertainty of the
     % median estimator across different draws of M trajectories.
-    plot_dt_grouped_errorbar(v_over_c, T_median, T_median_se, T_median_se, dt_zs, 's');
+    plot_dt_grouped_errorbar(v_over_c, T_median, T_median_se, T_median_se, group_id, group_labels, 's');
     % Light whiskers: the IQR, kept as a descriptive overlay of the
     % within-sample spread.
-    plot_light_whiskers(v_over_c, T_median, T_median - T_q1, T_q3 - T_median, ...
-                        dt_zs);
+    plot_light_whiskers(v_over_c, T_median, T_median - T_q1, T_q3 - T_median);
     set(gca, 'XScale', 'log');
     xlabel('$v_{\max}/c$', 'Interpreter', 'latex');
     ylabel('$\mathrm{median}\left(\left< T \right>_j\right)$ (J)', 'Interpreter', 'latex');
@@ -322,13 +380,13 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
     % by dt (colour) at x = v_max/c, with per-file mean (diamond) and median
     % (tick) overlaid. Exposes the heavy (Lomax) tail and seed-to-seed
     % spread directly, instead of summarising them with a single bar.
-    plot_trajectory_points_panel(v_over_c, T_per_traj_cell, dt_zs, T_analytical);
+    plot_trajectory_points_panel(v_over_c, T_per_traj_cell, group_id, group_labels, T_analytical);
     title('(c) All per-trajectory $\left< T \right>$ (diamond: mean, tick: median)', ...
           'Interpreter', 'latex');
 
     subplot(3, 2, 4);
     if any(~isnan(N_cross_mean))
-        plot_dt_grouped_errorbar(v_over_c, N_cross_mean, N_cross_std, N_cross_std, dt_zs, 'o');
+        plot_dt_grouped_errorbar(v_over_c, N_cross_mean, N_cross_std, N_cross_std, group_id, group_labels, 'o');
         set(gca, 'XScale', 'log');
         if all(N_cross_mean(~isnan(N_cross_mean)) > 0)
             set(gca, 'YScale', 'log');
@@ -351,7 +409,7 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
     subplot(3, 2, 5);
     hold on;
     if isempty(T_mean_time)
-        plot_dt_grouped_line(v_over_c, T_rel_mean, dt_zs, 'o');
+        plot_dt_grouped_line(v_over_c, T_rel_mean, group_id, group_labels, 'o');
         set(gca, 'XScale', 'log');
         xlabel('$v_{\max}/c$', 'Interpreter', 'latex');
         ylabel('final relative error', 'Interpreter', 'latex');
@@ -363,7 +421,7 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
                  line_style, 'Color', colors(k, :), 'LineWidth', 1.2);
         end
         xlabel('$t$ (ps)', 'Interpreter', 'latex');
-        ylabel('$|\overline{T}(t)-T_{\rm an}|/T_{\rm an}$', 'Interpreter', 'latex');
+        ylabel('$|\overline{T}(t)-T_{\mathrm{analytic}}|/T_{\mathrm{analytic}}$', 'Interpreter', 'latex');
     end
     title('(e) Running mean error', 'Interpreter', 'latex');
     grid on;
@@ -372,7 +430,7 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
     subplot(3, 2, 6);
     hold on;
     if isempty(T_sem_time)
-        plot_dt_grouped_line(v_over_c, T_sem / T_analytical, dt_zs, '^');
+        plot_dt_grouped_line(v_over_c, T_sem / T_analytical, group_id, group_labels, '^');
         set(gca, 'XScale', 'log');
         xlabel('$v_{\max}/c$', 'Interpreter', 'latex');
         legend('show', 'Interpreter', 'latex', ...
@@ -387,7 +445,7 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
         end
         xlabel('$t$ (ps)', 'Interpreter', 'latex');
     end
-    ylabel('$\mathrm{SEM}\left(\left< T \right>_j\right)/T_{\rm an}$', 'Interpreter', 'latex');
+    ylabel('$\mathrm{SEM}\left(\left< T \right>_j\right)/T_{\mathrm{analytic}}$', 'Interpreter', 'latex');
     title('(f) Running trajectory scatter', 'Interpreter', 'latex');
     grid on;
     hold off;
@@ -401,36 +459,41 @@ function [] = analyse_cutoff_scan(state_label, export_dir, data_root, mode)
                    'FontSize', 16, 'FontWeight', 'bold');
     end
 
-    pdf_name = ['cutoff_scan_kinetic_' state_label '.pdf'];
+    pdf_name = [state_label '_cutoff_scan_kinetic' name_suffix '.pdf'];
     exportgraphics(fig, fullfile(export_dir, pdf_name), 'ContentType', 'vector');
     fprintf('%s written\n', fullfile(export_dir, pdf_name));
 end
 
-function export_manuscript_mean_figure(state_label, export_dir, ...
-                                       v_over_c, T_mean, T_mean_se, dt_zs, T_analytical)
-    % Clean single-panel mean(<T>) vs v_max/c figure for the manuscript,
-    % sized and styled for Physica Scripta: single-column width, serif
-    % font, no in-figure title, one connected curve per integration step.
-    % Reuses the arrays already computed by the caller.
+function export_manuscript_mean_figure(state_label, export_dir, name_suffix, ...
+                                       v_over_c, T_mean, T_mean_se, group_id, group_labels, T_analytical)
+    % Clean single-panel mean(<T>) vs v_max/c figure for the manuscript. Each of
+    % the two states is included at width=0.49\textwidth (= 204 pt). exportgraphics
+    % crops the vector PDF to its content, so the figure is built deliberately LARGE
+    % (page well above 204 pt) and is then scaled DOWN by LaTeX, exactly like the
+    % distribution/energy figures. Down-scaling a vector PDF stays crisp; the
+    % earlier small builds were blown UP ~2x into the slot, which softened the text.
+    % Font sizes are picked so the down-scaled labels (~12 pt) match those figures.
+    % LaTeX only on labels/legend (default tick numbers) keeps it crisp; forcing the
+    % LaTeX tick interpreter would embed Computer Modern as unhinted font subsets
+    % that look soft. One connected curve per dt group.
 
-    fig = figure('Units', 'centimeters', 'Position', [2, 2, 9.0, 7.2], ...
+    fig = figure('Units', 'centimeters', 'Position', [2, 2, 20, 15.5], ...
                  'Color', 'w');
     ax = axes('Parent', fig);
-    set(ax, 'FontName', 'Times', 'FontSize', 9, 'Box', 'on', ...
-            'TickLabelInterpreter', 'latex', 'LineWidth', 0.8, ...
-            'GridAlpha', 0.15);
+    set(ax, 'FontSize', 12, 'Box', 'on', 'LineWidth', 1.0);
     hold(ax, 'on');
 
-    % Print-safe palette and distinct markers, one per dt group.
+    % Print-safe palette and distinct markers, one per curve group.
     palette = [0.00, 0.20, 0.55;    % blue
                0.10, 0.45, 0.20;    % green
                0.70, 0.30, 0.00;    % orange-brown
-               0.45, 0.10, 0.55];   % purple
-    markers = {'o', 's', '^', 'd'};
+               0.45, 0.10, 0.55;    % purple
+               0.10, 0.55, 0.60];   % teal (5th group, e.g. 1 zs)
+    markers = {'o', 's', '^', 'd', 'v'};
 
-    dts = sort(unique(dt_zs));
-    for g = 1:numel(dts)
-        gi = (dt_zs == dts(g));
+    for g = 1:numel(group_labels)
+        gi = (group_id == g);
+        if ~any(gi), continue; end
         [vs, order] = sort(v_over_c(gi));
         yy = T_mean(gi);    yy = yy(order);
         ee = T_mean_se(gi); ee = ee(order);
@@ -438,31 +501,43 @@ function export_manuscript_mean_figure(state_label, export_dir, ...
         mi = mod(g - 1, numel(markers)) + 1;
         errorbar(ax, vs, yy, ee, ee, markers{mi}, 'LineStyle', '-', ...
                  'Color', palette(ci, :), 'MarkerFaceColor', palette(ci, :), ...
-                 'MarkerSize', 4, 'LineWidth', 1.0, 'CapSize', 3, ...
-                 'DisplayName', sprintf('$\\Delta t = %s$ s', dt_seconds_latex(dts(g))));
+                 'MarkerSize', 5, 'LineWidth', 1.3, 'CapSize', 4, ...
+                 'DisplayName', group_labels{g});
+    end
+
+    % State-dependent subscript on the analytic value: T^{analytic}_r for the
+    % (2,0,0) radial kinetic energy, T^{analytic}_theta for the (2,1,0) polar one.
+    if strcmp(state_label, '2p0')
+        T_an_label = '$T^{\mathrm{analytic}}_\theta$';
+    else
+        T_an_label = '$T^{\mathrm{analytic}}_r$';
     end
 
     set(ax, 'XScale', 'log');
     x_now = xlim(ax);
     plot(ax, x_now, [T_analytical, T_analytical], '-.', ...
-         'Color', [0.60, 0.00, 0.00], 'LineWidth', 1.0, ...
-         'DisplayName', '$T_{\mathrm{an}}$');
+         'Color', [0.60, 0.00, 0.00], 'LineWidth', 1.3, ...
+         'DisplayName', T_an_label);
     xlim(ax, x_now);
 
-    xlabel(ax, '$v_{\max}/c$', 'Interpreter', 'latex', 'FontSize', 10);
+    xlabel(ax, '$v_{\max}/c$', 'Interpreter', 'latex', 'FontSize', 14);
     if strcmp(state_label, '2p0')
         ylabel(ax, '$\langle T_\theta \rangle$ (J)', 'Interpreter', 'latex', ...
-               'FontSize', 10);
+               'FontSize', 14);
+        title(ax, '$(2,1,0)$ state', 'Interpreter', 'latex', 'FontSize', 14);
+        ylim(ax, [2e-19, 9e-19]);
     else
         ylabel(ax, '$\langle T_r \rangle$ (J)', 'Interpreter', 'latex', ...
-               'FontSize', 10);
+               'FontSize', 14);
+        title(ax, '$(2,0,0)$ state', 'Interpreter', 'latex', 'FontSize', 14);
+        ylim(ax, [2e-19, 9e-19]);
     end
     legend(ax, 'show', 'Interpreter', 'latex', 'Location', 'northwest', ...
-           'Box', 'off', 'FontSize', 9);
+           'Box', 'off', 'FontSize', 13);
     grid(ax, 'on');
     hold(ax, 'off');
 
-    pdf_name = ['cutoff_scan_kinetic_' state_label '_manuscript.pdf'];
+    pdf_name = [state_label '_cutoff_scan_kinetic' name_suffix '_manuscript.pdf'];
     exportgraphics(fig, fullfile(export_dir, pdf_name), 'ContentType', 'vector');
     fprintf('%s written\n', fullfile(export_dir, pdf_name));
 end
@@ -496,65 +571,64 @@ function [value, seed_id, dt_zs] = parse_vmax_from_filename(state_label, mat_nam
     end
 end
 
-function plot_dt_grouped_errorbar(v_over_c, y_value, lower_err, upper_err, dt_zs, marker)
-    % One connected error-bar curve per dt group, x = v_max/c. Within a
-    % group the points are sorted by v_max so the line joins them in order.
-    dts = unique(dt_zs);
-    colors = line_colors(numel(dts));
+function plot_dt_grouped_errorbar(v_over_c, y_value, lower_err, upper_err, group_id, group_labels, marker)
+    % One connected error-bar curve per group, x = v_max/c. Within a group the
+    % points are sorted by v_max so the line joins them in order. Groups are by
+    % dt (or by (dt, T) when mixing total times); see make_curve_groups.
+    colors = line_colors(numel(group_labels));
     hold on;
-    for g = 1:numel(dts)
-        gi = (dt_zs == dts(g));
+    for g = 1:numel(group_labels)
+        gi = (group_id == g);
+        if ~any(gi), continue; end
         [vs, order] = sort(v_over_c(gi));
         yy = y_value(gi);  yy = yy(order);
         lo = lower_err(gi); lo = lo(order);
         hi = upper_err(gi); hi = hi(order);
         errorbar(vs, yy, lo, hi, marker, 'LineStyle', '-', ...
                  'Color', colors(g, :), 'MarkerFaceColor', colors(g, :), ...
-                 'LineWidth', 1.3, ...
-                 'DisplayName', sprintf('$\\Delta t = %s$ s', dt_seconds_latex(dts(g))));
+                 'LineWidth', 1.3, 'DisplayName', group_labels{g});
     end
     hold off;
 end
 
-function plot_dt_grouped_line(v_over_c, y_value, dt_zs, marker)
-    % One connected marker-line per dt group (no error bars), x = v_max/c.
-    dts = unique(dt_zs);
-    colors = line_colors(numel(dts));
+function plot_dt_grouped_line(v_over_c, y_value, group_id, group_labels, marker)
+    % One connected marker-line per group (no error bars), x = v_max/c.
+    colors = line_colors(numel(group_labels));
     hold on;
-    for g = 1:numel(dts)
-        gi = (dt_zs == dts(g));
+    for g = 1:numel(group_labels)
+        gi = (group_id == g);
+        if ~any(gi), continue; end
         [vs, order] = sort(v_over_c(gi));
         yy = y_value(gi);  yy = yy(order);
         plot(vs, yy, [marker '-'], 'Color', colors(g, :), ...
              'MarkerFaceColor', colors(g, :), 'LineWidth', 1.3, ...
-             'DisplayName', sprintf('$\\Delta t = %s$ s', dt_seconds_latex(dts(g))));
+             'DisplayName', group_labels{g});
     end
     hold off;
 end
 
-function plot_trajectory_points_panel(v_over_c, T_per_traj_cell, dt_zs, T_analytical)
+function plot_trajectory_points_panel(v_over_c, T_per_traj_cell, group_id, group_labels, T_analytical)
     % Scatter every per-trajectory time-averaged kinetic energy at x = v_max/c
-    % (log axis). Points are grouped by dt (colour) with a multiplicative
-    % per-dt x-offset and per-point jitter so the clouds separate, and the
-    % per-file mean (diamond) and median (thick tick) are overlaid. Reuses the
+    % (log axis). Points are grouped (colour) with a multiplicative per-group
+    % x-offset and per-point jitter so the clouds separate, and the per-file
+    % mean (diamond) and median (thick tick) are overlaid. Reuses the
     % per-trajectory vectors already loaded by the caller.
     ax = gca;
     hold(ax, 'on');
     set(ax, 'XScale', 'log');
 
-    colors = line_colors(numel(unique(dt_zs)));
-    dts = sort(unique(dt_zs));
-    nd = numel(dts);
-    group_handles = gobjects(nd, 1);
-    assigned = false(nd, 1);
+    ng = numel(group_labels);
+    colors = line_colors(ng);
+    group_handles = gobjects(ng, 1);
+    assigned = false(ng, 1);
     rng(1);   % reproducible jitter
 
-    for gi = 1:nd
+    for gi = 1:ng
         col = colors(gi, :);
-        % multiplicative x-offset per dt group so the clouds separate on the
+        % multiplicative x-offset per group so the clouds separate on the
         % log axis; the offset is symmetric about the true v_max/c.
-        x_off = exp(0.08 * (gi - (nd + 1) / 2));
-        idx = find(dt_zs == dts(gi));
+        x_off = exp(0.08 * (gi - (ng + 1) / 2));
+        idx = find(group_id == gi);
         for j = 1:numel(idx)
             k = idx(j);
             y = T_per_traj_cell{k};
@@ -566,9 +640,7 @@ function plot_trajectory_points_panel(v_over_c, T_per_traj_cell, dt_zs, T_analyt
             if ~assigned(gi)
                 group_handles(gi) = h;
                 assigned(gi) = true;
-                set(h, 'HandleVisibility', 'on', ...
-                       'DisplayName', sprintf('$\\Delta t = %s$ s', ...
-                                              dt_seconds_latex(dts(gi))));
+                set(h, 'HandleVisibility', 'on', 'DisplayName', group_labels{gi});
             end
             % per-file mean (diamond) and median (thick tick)
             plot(ax, xc, mean(y), 'd', 'MarkerSize', 7, ...
@@ -614,21 +686,52 @@ function T_analytical = kinetic_energy_reference_value(state_label)
 end
 
 function s = dt_seconds_latex(dt_zs)
-    % Format a dt given in zeptoseconds as a LaTeX power-of-ten string in
-    % seconds, e.g. 10 zs -> '10^{-20}', 100 zs -> '10^{-19}',
-    % 5 zs -> '5 \times 10^{-21}'.
-    dt_s = dt_zs * 1e-21;
-    e = floor(log10(dt_s) + 1e-9);
-    m = dt_s / 10^e;
-    m = round(m * 1e6) / 1e6;
-    if m >= 10 - 1e-6      % guard against round-up into the next decade
-        m = m / 10;
-        e = e + 1;
+    % Format a dt given in zeptoseconds on a common 10^{-21} s basis so the
+    % values are directly comparable in the legend, e.g.
+    % 100 zs -> '100 \times 10^{-21}', 10 zs -> '10 \times 10^{-21}',
+    % 5 zs -> '5 \times 10^{-21}', 0.5 zs -> '0.5 \times 10^{-21}'.
+    s = sprintf('%g \\times 10^{-21}', dt_zs);
+end
+
+function s = seconds_sci_latex(t)
+    % Format a time in seconds as a compact LaTeX mantissa x 10^exp string,
+    % e.g. 2e-11 -> '2\times10^{-11}', 1e-11 -> '10^{-11}'.
+    if ~isfinite(t) || t <= 0
+        s = '?'; return;
+    end
+    e = floor(log10(t) + 1e-9);
+    m = round(t / 10^e * 1e6) / 1e6;
+    if m >= 10 - 1e-6
+        m = m / 10; e = e + 1;
     end
     if abs(m - 1) < 1e-9
         s = sprintf('10^{%d}', e);
     else
         s = sprintf('%g \\times 10^{%d}', m, e);
+    end
+end
+
+function [group_id, group_labels] = make_curve_groups(dt_zs, total_time, mix_time)
+    % Assign each scan point to a curve group and build its legend label.
+    % Default: group by integration step dt only (legend shows dt). With
+    % mix_time on: group by (dt, total time T) so runs of different total time
+    % stay on separate, correctly labelled curves (legend shows dt and T).
+    dt_zs = dt_zs(:);
+    if mix_time
+        % Round T to 1e-13 s to fold floating-point-identical grids together.
+        t_round = round(total_time(:) / 1e-13);
+        [keys, ~, group_id] = unique([dt_zs, t_round], 'rows');  % sorted by dt then T
+        group_labels = cell(1, size(keys, 1));
+        for g = 1:size(keys, 1)
+            group_labels{g} = sprintf('$\\Delta t = %s$ s, $T = %s$ s', ...
+                dt_seconds_latex(keys(g, 1)), seconds_sci_latex(keys(g, 2) * 1e-13));
+        end
+    else
+        [keys, ~, group_id] = unique(dt_zs);   % sorted ascending
+        group_labels = cell(1, numel(keys));
+        for g = 1:numel(keys)
+            group_labels{g} = sprintf('$\\Delta t = %s$ s', dt_seconds_latex(keys(g)));
+        end
     end
 end
 
@@ -699,12 +802,12 @@ function se = bootstrap_median_se(values, n_boot, seed)
     se = std(medians);
 end
 
-function plot_light_whiskers(v_over_c, y_value, lower_err, upper_err, dt_zs) %#ok<INUSD>
+function plot_light_whiskers(v_over_c, y_value, lower_err, upper_err)
     % Thin light-gray whiskers used as a descriptive overlay (classical
     % SEM on panel (a), IQR on panel (b)). They are not the primary
     % error bars and are intentionally drawn without markers so they do
     % not compete with the bootstrap-SE error bars on the same axes. The
-    % dt grouping does not affect their appearance, so all points are drawn
+    % grouping does not affect their appearance, so all points are drawn
     % with a single gray errorbar call.
     light_gray = [0.55, 0.55, 0.55];
     hold on;

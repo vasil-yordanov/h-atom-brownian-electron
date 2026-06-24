@@ -38,10 +38,10 @@ function [n, l, m, n_steps, dt, traj_points, sigma_r_factor, M, v_max_over_c] = 
         traj_points = 1;
         if ~isempty(regexp(parameters_set, '^test_scan_vmax_', 'once'))
             n=2; l=1; m=0;
-            total_time = 1e-13;
+            total_time = 2e-13;
         elseif ~isempty(regexp(parameters_set, '^2p0_scan_vmax_', 'once'))
             n=2; l=1; m=0;
-            total_time = 1e-11;
+            total_time = 2e-11;   % same total time as the 2s0 scan
         elseif ~isempty(regexp(parameters_set, '^2s0_scan_vmax_', 'once'))
             n=2; l=0; m=0;
             total_time = 2e-11;
@@ -67,19 +67,19 @@ function [n, l, m, n_steps, dt, traj_points, sigma_r_factor, M, v_max_over_c] = 
         traj_points = 2e8;
     elseif strcmp(parameters_set, '2p_m0_1ps') || strcmp(parameters_set, '2p0_1ps')
         n=2; l=1; m=0;
-        n_steps = 5e6;
-        dt = 10e-21;
-        traj_points = 2e6;
+        n_steps = 2e8;      % 1 ps total; first 100 fs stored per step
+        dt = 5e-21;         % same dt as 2p_m1_1ps/2p_mn1_1ps (manuscript Fig. 9)
+        traj_points = 2e7;
     elseif strcmp(parameters_set, '2p_m1_1ps') || strcmp(parameters_set, '2p1_1ps')
         n=2; l=1; m=1;
-        n_steps = 2e6;
+        n_steps = 2e8;      % 1 ps total; first 100 fs stored per step
         dt = 5e-21;
-        traj_points = 2e6;
+        traj_points = 2e7;
     elseif strcmp(parameters_set, '2p_mn1_1ps')
         n=2; l=1; m=-1;
-        n_steps = 2e6;
+        n_steps = 2e8;      % 1 ps total; first 100 fs stored per step
         dt = 5e-21;
-        traj_points = 2e6;
+        traj_points = 2e7;
     elseif strcmp(parameters_set, '2s0_10ps')
         n=2; l=0; m=0;
         n_steps = 1e9;

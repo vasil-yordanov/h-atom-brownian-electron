@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Editor / IDE
+.idea/
+
+# Large simulation output -- regenerate by running h_atom (not version-controlled)
+data/
+
+# Generated manuscript figures -- live in the manuscript (Dropbox) dir, not the repo
+figures/
