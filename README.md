@@ -3,7 +3,7 @@ This repository contains the source code for simulating the hydrogen atom using
 Stochastic Mechanics to model the electron’s behavior through Brownian motion.
 
 For more details on the methodology, see the related paper on arXiv:
-[Hydrogen Atom Simulation through Stochastic Mechanics](https://arxiv.org/abs/2412.19918v1).
+[Revisiting the Bohr Model of the Atom through Brownian Motion of the Electron](https://arxiv.org/abs/2412.19918).
 
 # Results
 
