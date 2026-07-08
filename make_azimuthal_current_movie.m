@@ -1,8 +1,7 @@
 % MAKE_AZIMUTHAL_CURRENT_MOVIE  "Comet" animation of the phase-driven azimuthal
 % circulation of the (2,1,m) states, m = +1, 0, -1.
 %
-% The electron trajectory is drawn as a thin, fading azure trace (same colour
-% and style as the 3D trajectory in the dashboard movies) over a short time
+% The electron trajectory is drawn as a thin, fading azure trace over a short time
 % window, viewed straight down the +z axis (the xy-plane). For m = +1 it sweeps
 % counter-clockwise, for m = -1 clockwise, and for m = 0 it shows no net sense of
 % rotation -- a direct visualisation of the azimuthal current
@@ -15,26 +14,26 @@
 %   params_set_name='2p_m0_1ps';  h_atom
 %   params_set_name='2p_mn1_1ps'; h_atom
 %
-% It writes numbered PNG frames under <tmp>/azim_movie_frames/azim_3panel_2d.
-% Assemble into a GIF with ImageMagick:
-%   magick -delay 6 -loop 0 <dir>/frame_*.png movies/2p_pm1_azimuthal_current_3panel.gif
+% It writes videos/2p_pm1_azimuthal_current_3panel.mp4.
+% Convert to WebP with ffmpeg:
+%   ffmpeg -y -i videos/2p_pm1_azimuthal_current_3panel.mp4 -vf "fps=50/3,scale=1500:-1:flags=lanczos" -c:v libwebp -q:v 85 -compression_level 6 -loop 0 -an movies/2p_pm1_azimuthal_current_3panel.webp
 
 addpath('functions');
 [~, ~, a_0] = constants();
 
-frame_root = fullfile(tempdir, 'azim_movie_frames');
+out_mp4 = fullfile('videos', '2p_pm1_azimuthal_current_3panel.mp4');
 
 % Single top-down (xy-plane) 3-panel figure (m = +1 | 0 | -1). The rotation
 % sense (CCW vs CW) is only legible looking straight down +z, so no 3D view; and
 % the side-by-side panels are the point, so no single-panel variant.
 render_comet({'2p_m1_1ps','2p_m0_1ps','2p_mn1_1ps'}, {'$m=+1$','$m=0$','$m=-1$'}, ...
-             fullfile(frame_root,'azim_3panel_2d'), a_0);
+             out_mp4, a_0);
 
-fprintf('\nFrames written under %s\n', frame_root);
+fprintf('\nMP4 written: %s\n', out_mp4);
 
 
-function render_comet(sets, labels, out_dir, a_0)
-    % Render one PNG frame sequence: top-down (xy-plane) comet for each set.
+function render_comet(sets, labels, out_mp4, a_0)
+    % Render one MP4: top-down (xy-plane) comet for each set.
     N_win    = 1.0e6;    % stored points in the window (~4 revolutions for m=+1)
     n_frames = 150;      % animation frames
     L_tail   = 600000;   % comet tail length, stored points (longer trace)
@@ -61,12 +60,17 @@ function render_comet(sets, labels, out_dir, a_0)
         Y{k} = r .* sin(th) .* sin(ph) / a_0;
     end
 
+    out_dir = fileparts(out_mp4);
     if ~exist(out_dir, 'dir'); mkdir(out_dir); end
-    delete(fullfile(out_dir, 'frame_*.png'));
 
-    % Panels sized for legibility (axis labels and titles readable in the GIF).
+    % Panels sized for legibility (axis labels and titles readable in the animation).
     fig = figure('Color', 'w', 'Visible', 'off', ...
-                 'Units', 'pixels', 'Position', [100, 100, 430 * np, 460]);
+                 'Units', 'pixels', 'Position', [100, 100, 520 * np, 560]);
+
+    vw = VideoWriter(out_mp4, 'MPEG-4');
+    vw.FrameRate = 100 / 6;   % 150 frames over 9 seconds
+    vw.Quality = 100;
+    open(vw);
 
     % Fixed decimation grid: decimate the trajectory ONCE so every frame draws
     % the same sample points (only the visible range changes). Re-sampling the
@@ -81,10 +85,9 @@ function render_comet(sets, labels, out_dir, a_0)
         for k = 1:np
             if np > 1, ax = subplot(1, np, k); else, ax = axes('Parent', fig); end
             hold(ax, 'on');
-            % Thin, fading azure trace -- same colour/style as the 3D trajectory
-            % in the other movies (plot_trajectory_3d). The tail is drawn as a
-            % series of short line segments whose alpha ramps from transparent
-            % (old) to opaque (new), giving a clean fading comet.
+            % Thin, fading azure trace. The tail is drawn as a series of short
+            % line segments whose alpha ramps from transparent (old) to opaque
+            % (new), giving a clean fading comet.
             azure = [0, 0.4470, 0.7410];
             lo    = max(1, h - L_tail);
             ti    = samp(samp >= lo & samp <= h);   % fixed-grid samples in the tail
@@ -105,8 +108,14 @@ function render_comet(sets, labels, out_dir, a_0)
             title(ax, labels{k}, 'Interpreter', 'latex', 'FontSize', 15);
             hold(ax, 'off');
         end
-        exportgraphics(fig, fullfile(out_dir, sprintf('frame_%03d.png', fI)), 'Resolution', 110);
+        frame = getframe(fig);
+        if ~isempty(vw.Height) && ...
+                (size(frame.cdata, 1) ~= vw.Height || size(frame.cdata, 2) ~= vw.Width)
+            frame.cdata = imresize(frame.cdata, [vw.Height, vw.Width]);
+        end
+        writeVideo(vw, frame);
     end
+    close(vw);
     close(fig);
-    fprintf('%d frames -> %s\n', n_frames, out_dir);
+    fprintf('%d frames -> %s\n', n_frames, out_mp4);
 end

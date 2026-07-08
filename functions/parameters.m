@@ -8,7 +8,7 @@ function [n, l, m, n_steps, dt, traj_points, sigma_r_factor, M, v_max_over_c] = 
     % Input parameter parameters_set can be: 
     %   - 'fig_1'
     %   - 'fig_2a'
-    %   - 'fig_2b'
+    %   - 'fig_2b'1i
     %   - 'fig_3'
     %   - 'fig_4_6b_7b'
     %   - 'fig_5_6a_7a'
@@ -85,6 +85,53 @@ function [n, l, m, n_steps, dt, traj_points, sigma_r_factor, M, v_max_over_c] = 
         n_steps = 1e9;
         dt = 1e-20;
         traj_points = 1e7;
+    % --- Compact online Lz estimator runs --------------------------------------
+    % These runs are for the Lz/hbar(t) diagnostic, not movies. h_atom accumulates
+    % Lz online at the integration time step and saves only a compact running
+    % time series, so no full r/theta/phi trajectory is stored.
+    elseif strcmp(parameters_set, '2p_m1_lz_1ps')
+        n=2; l=1; m=1;
+        n_steps = 2e8;      % 1 ps at dt = 5 zs
+        dt = 5e-21;
+        traj_points = 1;
+    elseif strcmp(parameters_set, '2p_m0_lz_1ps')
+        n=2; l=1; m=0;
+        n_steps = 2e8;      % 1 ps at dt = 5 zs
+        dt = 5e-21;
+        traj_points = 1;
+    elseif strcmp(parameters_set, '2p_mn1_lz_1ps')
+        n=2; l=1; m=-1;
+        n_steps = 2e8;      % 1 ps at dt = 5 zs
+        dt = 5e-21;
+        traj_points = 1;
+    % --- Short, fine-grained "movie" runs ---------------------------------------
+    % Each is a shortened copy of the matching production run (same n,l,m and dt,
+    % so seed 7 reproduces the identical early trajectory) but only as long as the
+    % movie window. traj_points = n_steps: EVERY step is stored, so the 3D cloud
+    % keeps growing for the whole window instead of freezing once the stored path
+    % runs out (r_traj column index = step index, capped at traj_points). With the
+    % default n_frames = 1000 this gives a very smooth movie (window / 1000 per
+    % frame). Used ONLY for the README movies; the figures keep the full runs above.
+    elseif strcmp(parameters_set, '1s0_movie')        % (1,0,0): 0.15 ps -> 0.15 fs/frame
+        n=1; l=0; m=0;
+        n_steps = 1.5e7;
+        dt = 1e-20;
+        traj_points = 1.5e7;                          % = n_steps (store every step)
+    elseif strcmp(parameters_set, '2p0_movie')        % (2,1,0): 2 ps -> 2 fs/frame
+        n=2; l=1; m=0;
+        n_steps = 2e8;
+        dt = 1e-20;
+        traj_points = 2e8;                            % = n_steps (store every step)
+    elseif strcmp(parameters_set, '2s0_movie')        % (2,0,0): 0.5 ps -> 0.5 fs/frame
+        n=2; l=0; m=0;
+        n_steps = 5e7;
+        dt = 1e-20;
+        traj_points = 5e7;                            % = n_steps (store every step)
+    elseif strcmp(parameters_set, '2p_m1_movie')      % (2,1,1): 0.5 ps -> 0.5 fs/frame
+        n=2; l=1; m=1;
+        n_steps = 1e8;
+        dt = 5e-21;
+        traj_points = 1e8;                            % = n_steps (store every step)
     elseif strcmp(parameters_set, 'test')
         n=1; l=0; m=0;
         n_steps = 1e5;

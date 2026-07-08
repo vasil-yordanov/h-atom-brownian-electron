@@ -1,7 +1,10 @@
-function [] = plot_trajectory_3d(n, l, r_traj, theta_traj, phi_traj, a_0, traj_points, params_set_name, show_all)
+function [] = plot_trajectory_3d(n, l, r_traj, theta_traj, phi_traj, a_0, traj_points, params_set_name, show_all, trajectory_style)
     % Set default for show_all based on the number of input arguments
-    if nargin == 8
+    if nargin < 9 || isempty(show_all)
         show_all = false;
+    end
+    if nargin < 10 || isempty(trajectory_style)
+        trajectory_style = 'radius';
     end
 
     % Determine the number of trajectory points to process
@@ -32,34 +35,47 @@ function [] = plot_trajectory_3d(n, l, r_traj, theta_traj, phi_traj, a_0, traj_p
     s_phi = sin(phi);
     c_theta = cos(theta);
     
-    % Compute Cartesian coordinates
-    x = r .* s_theta .* c_phi;
-    y = r .* s_theta .* s_phi;
-    z = r .* c_theta;
+    % Compute Cartesian coordinates in a_0 units, and colour the line by radius.
+    x = r .* s_theta .* c_phi ./ a_0;
+    y = r .* s_theta .* s_phi ./ a_0;
+    z = r .* c_theta ./ a_0;
+    c = r ./ a_0;
 
-    plot3(x ./ a_0, y ./ a_0, z ./ a_0, '-', 'LineWidth', 1.0, 'Color', [0.1, 0.35, 0.8]);
-    xlabel('X', 'FontSize', 14);
-    ylabel('Y', 'FontSize', 14);
-    zlabel('Z', 'FontSize', 14);
-
-    % Rendering scale of the 3D cloud. Do NOT drop axis vis3d: without it MATLAB
-    % stretch-to-fits the rotated plot box to the axes at every view angle, which
-    % shrinks the cube and leaves a big empty margin -- exportgraphics then writes
-    % a tiny cloud in a large white box. axis equal keeps the cube undistorted and
-    % camup fixes +z as "up".
-    axis equal;
-    axis vis3d;
-    camup([0 0 1]);
-    set(gca, 'FontSize', 12);
+    ax = gca;
+    if strcmp(trajectory_style, 'sphere')
+        plot3(ax, x, y, z, 'Color', [0 0.4470 0.7410], ...
+              'LineWidth', 0.8);
+        colorbar(ax, 'off');
+    else
+        surface(ax, [x; x], [y; y], [z; z], [c; c], ...
+                'FaceColor', 'none', 'EdgeColor', 'interp', ...
+                'LineWidth', 0.7, 'EdgeAlpha', 0.7);
+        colormap(ax, turbo);
+        colorbar(ax, 'off');
+    end
+    xlabel(ax, 'X / a_0', 'FontSize', 10);
+    ylabel(ax, 'Y / a_0', 'FontSize', 10);
+    zlabel(ax, 'Z / a_0', 'FontSize', 10);
 
     % Cubic axis box, shared with export_cloud_full via cloud_cube_limit so the
     % manuscript clouds and the live/movie clouds use the same geometry. The
     % 1s0_1ps cube is snug (its drift tail is intentionally cropped); all other
-    % states use half the histogram range, padded.
+    % states use half the histogram range, padded. Set the limits FIRST.
     lim = cloud_cube_limit(n, l, a_0, params_set_name);
     xlim([-lim lim]);
     ylim([-lim lim]);
     zlim([-lim lim]);
+
+    % Pin the box geometry to FIXED values so it is identical every frame. The
+    % limits above are a cube, so DataAspectRatio = PlotBoxAspectRatio = [1 1 1]
+    % renders an undistorted cube; making both manual also disables MATLAB's
+    % stretch-to-fill (which would shrink the rotated cube and leave a big white
+    % margin). Do NOT use `axis equal; axis vis3d;` here: vis3d freezes the
+    % plot-box aspect ratio from the *current data extent*, which grows every
+    % frame, so the box would rescale / jump from frame to frame in the movie.
+    clim(ax, [0 lim]);
+    set(ax, 'DataAspectRatio', [1 1 1], 'PlotBoxAspectRatio', [1 1 1], 'FontSize', 9);
+    camup([0 0 1]);          % fix +z as "up"
     if strcmp(params_set_name, '1s0_1ps')
         view(-18, 16);
     else
@@ -69,4 +85,3 @@ function [] = plot_trajectory_3d(n, l, r_traj, theta_traj, phi_traj, a_0, traj_p
     grid on;
 
 end
-

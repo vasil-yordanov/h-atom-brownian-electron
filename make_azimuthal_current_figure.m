@@ -8,7 +8,7 @@
 %       winding rate <dphi/dt> = m hbar/(8 m_e a_0^2).
 %
 % The coordinate distributions of the (2,1,1) state (manuscript Fig. 5) are
-% exported by h_atom_post_processing, in the same style as Figs. 3-4.
+% exported by make_distribution_figures("2p_m1"), in the same style as Figs. 3-4.
 %
 % Requires the three production runs (1 ps each):
 %   params_set_name='2p_m1_1ps';  h_atom
@@ -25,7 +25,7 @@ addpath('functions');
 [hbar, m_e, a_0, ~, ~, ~] = constants();
 
 sets   = {'2p_m1_1ps', '2p_m0_1ps', '2p_mn1_1ps'};
-labels = {'$m=+1$', '$m=0$', '$m=-1$'};
+labels = {'$m=+1$', '$m=\phantom{+}0$', '$m=-1$'};
 colors = {[0.85, 0.33, 0.10], [0.35, 0.35, 0.35], [0.00, 0.45, 0.74]};
 
 % Analytical references for the (2,1,+-1) states (manuscript Eqs. (9.2)-(9.3)):

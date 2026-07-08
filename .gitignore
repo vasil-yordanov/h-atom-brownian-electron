@@ -10,3 +10,8 @@ data/
 
 # Generated manuscript figures -- live in the manuscript (Dropbox) dir, not the repo
 figures/
+
+# Experimental / scratch visualisation prototypes (not part of the pipeline):
+# scripts, stills, movies and context notes (experimental_*.m/.png/.mp4/.gif/.md)
+experimental_*
+/videos/

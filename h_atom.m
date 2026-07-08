@@ -57,6 +57,7 @@ end
 % M is supplied by parameters.m so scan runs can use fewer trajectories
 % without changing the production presets.
 is_cutoff_scan_run = ~isempty(regexp(params_set_name, '_scan_vmax_', 'once'));
+is_lz_estimator_run = ~isempty(regexp(params_set_name, '_lz_1ps$', 'once'));
 % Scan runs share the kinetic-error-vs-reference plotting layout.
 is_kinetic_scan_run = is_cutoff_scan_run;
 % Output-name tags built from the EFFECTIVE (post-override) v_max/c and dt.
@@ -93,7 +94,7 @@ end
 if M > 1
     output_run_name = sprintf('%s_seed_%d', output_run_name, random_seed);
 end
-make_live_plots = true;
+make_live_plots = ~is_lz_estimator_run;
 % By default the production dashboard is the 6-panel (2x3) layout
 % (radial/polar/azimuthal histograms, distribution deviation, energies-vs-time,
 % 3D trajectory) using a single trajectory -- matching the original M = 1
@@ -103,6 +104,9 @@ make_live_plots = true;
 % well (cross-particle means + SEM bands).
 single_traj_main_plots = true;
 n_frames = 1000; % Total number of video frames
+if is_lz_estimator_run
+    n_frames = 5000;   % Compact Lz/hbar(t) output, not a dashboard movie.
+end
 if strcmp(params_set_name, '2p_m1_1ps') || strcmp(params_set_name, '2p1_1ps') || strcmp(params_set_name, '2p_m0_1ps') || strcmp(params_set_name, '2p0_1ps') || strcmp(params_set_name, '2p_mn1_1ps')
     n_frames = 80;
 end
@@ -186,6 +190,9 @@ KE_phi_traj = zeros(1, n_frames);
 b_phi_avg_traj = zeros(1, n_frames);
 V_traj = zeros(1, n_frames);
 E_traj = zeros(1, n_frames);
+S_Lz_running = 0;
+Lz_over_hbar_traj = NaN(1, n_frames);
+Lz_time_arr = time_arr;
 
 % Per-trajectory running-average time series (size [M, n_frames]).
 % Used by plot_energies_with_bands.m to draw +/- SEM bands.
@@ -430,8 +437,14 @@ for i = i_start:n_steps
     cutoff_engagement_phi_count_per_traj = cutoff_engagement_phi_count_per_traj + b_phi_drift_idx;
     b_phi_drift(b_phi_drift_idx) = v_max * sign(b_phi_drift(b_phi_drift_idx));
 
-    % Update Azimuthal Angle
-    phi_unwrapped = phi_unwrapped + 1./(r_safe .* sin(theta_safe)) .* (b_phi_drift .* dt + dW_phi);
+    % Update Azimuthal Angle. Keep the applied unwrapped increment for the
+    % online Lz estimator; it must reflect any drift cutoff already applied.
+    dphi_step = 1./(r_safe .* sin(theta_safe)) .* (b_phi_drift .* dt + dW_phi);
+    if is_lz_estimator_run
+        S_Lz_running = S_Lz_running + ...
+            m_e * r_safe(1)^2 * sin(theta_safe(1))^2 * dphi_step(1);
+    end
+    phi_unwrapped = phi_unwrapped + dphi_step;
 
     % Adjust phi to be Within [0, 2*pi]
     phi = mod(phi_unwrapped, 2 * pi);
@@ -499,6 +512,9 @@ for i = i_start:n_steps
         b_phi_avg_traj(frame_index) = S_b_phi / i;
         V_traj(frame_index) = S_V / i;
         E_traj(frame_index) = S_E / i;
+        if is_lz_estimator_run
+            Lz_over_hbar_traj(frame_index) = S_Lz_running / (i * dt) / hbar;
+        end
         N_cross_total_traj(frame_index) = sum(N_cross_per_traj);
         N_cross_mean_traj(frame_index) = mean(N_cross_per_traj);
         % Per-particle running averages at this frame.
