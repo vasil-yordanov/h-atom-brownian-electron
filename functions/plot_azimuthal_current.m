@@ -1,5 +1,6 @@
 function [] = plot_azimuthal_current(time_array, b_phi_avg_array, n, l, m)
     [hbar, m_e, a_0, ~, ~, ~] = constants();
+    time_ps = time_array / 1e-12;
 
     hold on;
     yline(0, 'k--', 'LineWidth', 0.8, 'HandleVisibility', 'off');
@@ -14,10 +15,10 @@ function [] = plot_azimuthal_current(time_array, b_phi_avg_array, n, l, m)
         theory_handle = yline(b_phi_theory, 'r--', 'LineWidth', 1.4);
     end
 
-    mean_handle = plot(time_array, b_phi_avg_array, 'LineWidth', 1.8, 'Color', [0.2, 0.5, 0.9]);
+    mean_handle = plot(time_ps, b_phi_avg_array, 'LineWidth', 1.8, 'Color', [0.2, 0.5, 0.9]);
     hold off;
 
-    xlabel('Time (s)', 'FontSize', 14);
+    xlabel('Time (ps)', 'FontSize', 14);
     ylabel('Mean Azimuthal Current - $\langle b_\phi \rangle$ (m/s)', 'Interpreter', 'latex', 'FontSize', 14);
     set(gca, 'FontSize', 12);
 
@@ -25,7 +26,7 @@ function [] = plot_azimuthal_current(time_array, b_phi_avg_array, n, l, m)
         legend([mean_handle, theory_handle], {'Simulation', 'Theory'}, 'Location', 'best', 'FontSize', 11);
     end
 
-    if length(time_array) > 1
-        xlim([0, time_array(end)]);
+    if length(time_ps) > 1
+        xlim([0, time_ps(end)]);
     end
 end

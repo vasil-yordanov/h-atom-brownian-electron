@@ -60,13 +60,13 @@ yline(0, 'k--', 'LineWidth', 0.8, 'HandleVisibility', 'off');
 yline( b_phi_ref, 'r--', 'LineWidth', 1.2, 'HandleVisibility', 'off');
 yline(-b_phi_ref, '--', 'Color', colors{3}, 'LineWidth', 1.2, 'HandleVisibility', 'off');
 for k = 1:3
-    plot(S{k}.time_arr, S{k}.b_phi_avg_traj, 'LineWidth', 1.6, ...
+    plot(S{k}.time_arr / 1e-12, S{k}.b_phi_avg_traj, 'LineWidth', 1.6, ...
          'Color', colors{k}, 'DisplayName', labels{k});
 end
 hold off; grid on; box on;
-xlim([0, T_a]);
+xlim([0, T_a / 1e-12]);
 ylim([-1e6, 1e6]);   % pin the tick scale (manual axes auto-picked a busier one)
-xlabel('Time (s)', 'FontSize', 12);
+xlabel('Time (ps)', 'FontSize', 12);
 ylabel('$\overline{b_\phi}$ (m/s)', 'Interpreter', 'latex', 'FontSize', 13);
 lg_a = legend('Interpreter', 'latex', 'Location', 'east', 'Box', 'off', 'FontSize', 10);
 
@@ -75,8 +75,9 @@ lg_a = legend('Interpreter', 'latex', 'Location', 'east', 'Box', 'off', 'FontSiz
 % the analytical winding rate is phidot_ref/(2*pi) ~ 0.82 revolutions/fs.
 axes('Position', [0.44, 0.14, 0.535, 0.80]); hold on;
 tt = linspace(0, T_b, 50);
-plot(tt,  phidot_ref * tt / (2*pi), 'r--', 'LineWidth', 1.2, 'HandleVisibility', 'off');
-plot(tt, -phidot_ref * tt / (2*pi), '--', 'Color', colors{3}, 'LineWidth', 1.2, 'HandleVisibility', 'off');
+tt_ps = tt / 1e-12;
+plot(tt_ps,  phidot_ref * tt / (2*pi), 'r--', 'LineWidth', 1.2, 'HandleVisibility', 'off');
+plot(tt_ps, -phidot_ref * tt / (2*pi), '--', 'Color', colors{3}, 'LineWidth', 1.2, 'HandleVisibility', 'off');
 for k = 1:3
     phi_u = unwrap(S{k}.phi_traj);
     phi_u = phi_u - phi_u(1);
@@ -91,12 +92,12 @@ for k = 1:3
     else
         lw = 1.5; col = colors{k};
     end
-    plot(t_loc(idx), phi_u(idx) / (2*pi), 'LineWidth', lw, 'Color', col, ...
+    plot(t_loc(idx) / 1e-12, phi_u(idx) / (2*pi), 'LineWidth', lw, 'Color', col, ...
          'DisplayName', labels{k});
 end
 hold off; grid on; box on;
-xlim([0, T_b]);
-xlabel('Time (s)', 'FontSize', 12);
+xlim([0, T_b / 1e-12]);
+xlabel('Time (ps)', 'FontSize', 12);
 ylabel('$\phi/2\pi$ (revolutions)', 'Interpreter', 'latex', 'FontSize', 13);
 legend('Interpreter', 'latex', 'Location', 'northwest', 'Box', 'off', 'FontSize', 10);
 

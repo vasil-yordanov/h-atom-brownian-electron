@@ -1,5 +1,6 @@
 function [] = plot_energies_with_bands(n, l, m, time_array, ...
         KE_radial_traj_M, KE_theta_traj_M, KE_phi_traj_M, V_traj_M, E_traj_M, use_robust_polar)
+    time_ps = time_array / 1e-12;
     % PLOT_ENERGIES_WITH_BANDS  Drop-in replacement for plot_energies.m for
     % runs with M > 1 independent trajectories.
     %
@@ -23,7 +24,7 @@ function [] = plot_energies_with_bands(n, l, m, time_array, ...
     if ~isnan(theor_E_r)
         yline(theor_E_r, 'LineStyle', '-', 'Color', [0, 0, 1], 'LineWidth', 0.7, 'HandleVisibility', 'off');
     end
-    plot_mean_band(time_array, KE_radial_traj_M, [0, 0, 1], '-', ...
+    plot_mean_band(time_ps, KE_radial_traj_M, [0, 0, 1], '-', ...
         '$\left< E_r \right>$');
 
     % Polar KE -- robust statistics for the heavy-tailed (2,1,0) case.
@@ -38,38 +39,38 @@ function [] = plot_energies_with_bands(n, l, m, time_array, ...
         else
             theta_label = '$\left< E_\theta \right>$';
         end
-        plot_median_iqr_band(time_array, KE_theta_traj_M, [0, 1, 0], '--', ...
+        plot_median_iqr_band(time_ps, KE_theta_traj_M, [0, 1, 0], '--', ...
             theta_label);
     else
-        plot_mean_band(time_array, KE_theta_traj_M, [0, 1, 0], '-', ...
+        plot_mean_band(time_ps, KE_theta_traj_M, [0, 1, 0], '-', ...
             '$\left< E_\theta \right>$');
     end
 
     if m ~= 0 % no need to plot trivial energy E_phi=0
         yline(expected_E_phi(l, m), 'LineStyle', '-', 'Color', [0, 1, 0.7], ...
             'LineWidth', 0.7, 'HandleVisibility', 'off');
-        plot_mean_band(time_array, KE_phi_traj_M, [0, 1, 0.7], '-', ...
+        plot_mean_band(time_ps, KE_phi_traj_M, [0, 1, 0.7], '-', ...
             '$\left< E_\phi \right>$');
     end
 
     yline(expected_V(n), 'LineStyle', '-', 'Color', [1, 0.5, 0], ...
         'LineWidth', 0.5, 'HandleVisibility', 'off');
-    plot_mean_band(time_array, V_traj_M, [1, 0.5, 0], '-', ...
+    plot_mean_band(time_ps, V_traj_M, [1, 0.5, 0], '-', ...
         '$\left< V \right>$');
 
     yline(expected_E(n), 'LineStyle', '-', 'Color', [1, 0, 0], ...
         'LineWidth', 0.7, 'HandleVisibility', 'off');
-    plot_mean_band(time_array, E_traj_M, [1, 0, 0], '-', ...
+    plot_mean_band(time_ps, E_traj_M, [1, 0, 0], '-', ...
         '$\left< E \right>$');
 
     hold off;
     ylabel('Average Energies (J)', 'FontSize', 14);
-    xlabel('Time (s)', 'FontSize', 14);
+    xlabel('Time (ps)', 'FontSize', 14);
     legend('Interpreter', 'latex', 'FontSize', 11);
     set(gca, 'FontSize', 12);
 
-    if length(time_array) > 1
-        xlim([0, time_array(end)]);
+    if length(time_ps) > 1
+        xlim([0, time_ps(end)]);
     end
 
     % Match plot_energies.m for the manuscript's 2p_0 and 2s_0 figures.

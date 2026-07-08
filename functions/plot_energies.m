@@ -1,42 +1,44 @@
 function [] = plot_energies(n, l, m, time_array, KE_radial_traj, KE_theta_traj, KE_phi_traj, V_traj, E_traj)
+    time_ps = time_array / 1e-12;
+
     hold on;
     
     theor_E_r = expected_E_r(n, l);
     if ~isnan(theor_E_r)
         yline(theor_E_r, 'LineStyle', '-', 'Color', [0, 0, 1], 'LineWidth', 0.7, 'HandleVisibility', 'off');
     end
-    plot(time_array, KE_radial_traj, ...
+    plot(time_ps, KE_radial_traj, ...
         'LineStyle', '-', 'Color', [0, 0, 1], 'LineWidth', 2, 'DisplayName', '$\left< E_r \right>$');
     
     theot_E_theta = expected_E_theta(l, m);
     yline(theot_E_theta, 'LineStyle', '-', 'Color', [0, 1, 0], 'LineWidth', 0.7, 'HandleVisibility', 'off');
-    plot(time_array, KE_theta_traj, ...
+    plot(time_ps, KE_theta_traj, ...
         'LineStyle', '-', 'Color', [0, 1, 0], 'LineWidth', 2, 'DisplayName', '$\left< E_\theta \right>$');
 
     if m ~= 0 % no need to plot trivial energy E_phi=0
         theot_E_phi = expected_E_phi(l, m);
         yline(theot_E_phi, 'LineStyle', '-', 'Color', [0, 1, 0.7], 'LineWidth', 0.7, 'HandleVisibility', 'off');
-        plot(time_array, KE_phi_traj, ...
+        plot(time_ps, KE_phi_traj, ...
             'LineStyle', '-', 'Color', [0, 1, 0.7], 'LineWidth', 2, 'DisplayName', '$\left< E_\phi \right>$');
     end
 
     theor_V = expected_V(n);
     yline(theor_V, 'LineStyle', '-', 'Color', [1, 0.5, 0], 'LineWidth', 0.5, 'HandleVisibility', 'off');
-    plot(time_array, V_traj, ...
+    plot(time_ps, V_traj, ...
         'LineStyle', '-', 'Color', [1, 0.5, 0], 'LineWidth', 2, 'DisplayName', '$\left< V \right>$');
    
     theor_E = expected_E(n);
     yline(theor_E, 'LineStyle', '-', 'Color', [1, 0, 0], 'LineWidth', 0.7, 'HandleVisibility', 'off');
-    plot(time_array, E_traj, ...
+    plot(time_ps, E_traj, ...
         'LineStyle', '-', 'Color', [1, 0, 0], 'LineWidth', 2, 'DisplayName', '$\left< E \right>$');
     hold off;
     ylabel('Average Energies (J)', 'FontSize', 14);
-    xlabel('Time (s)', 'FontSize', 14);
+    xlabel('Time (ps)', 'FontSize', 14);
     legend('Interpreter', 'latex', 'FontSize', 11);
     set(gca, 'FontSize', 12);
     
-    if length(time_array) > 1
-        xlim([0, time_array(end)]);
+    if length(time_ps) > 1
+        xlim([0, time_ps(end)]);
     end
     
     % Optimized for 2p0 and 2s0 states. Modify for other states.

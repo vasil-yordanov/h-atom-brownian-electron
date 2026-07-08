@@ -371,7 +371,7 @@ function make_lz_figure(results, figure_dir)
               0.3500, 0.3500, 0.3500;
               0.0000, 0.4500, 0.7400];
     for k = 1:numel(results)
-        plot(ax, results(k).t_plot, results(k).lz_plot, ...
+        plot(ax, results(k).t_plot / 1e-12, results(k).lz_plot, ...
              'LineWidth', 1.8, 'Color', colors(k, :), ...
              'DisplayName', char(results(k).legend_label));
     end
@@ -384,18 +384,19 @@ function make_lz_figure(results, figure_dir)
     [hbar_env, m_e_env] = constants();
     a0 = 5.29177210903e-11;
     t_env = linspace(results(1).t_plot(2), results(1).t_plot(end), 500);
+    t_env_ps = t_env / 1e-12;
     std_env = sqrt(24 * m_e_env * a0^2 ./ (hbar_env * t_env));
     for base = [1, -1]
-        plot(ax, t_env, base + std_env, ':', 'Color', [0.35, 0.35, 0.35], ...
+        plot(ax, t_env_ps, base + std_env, ':', 'Color', [0.35, 0.35, 0.35], ...
              'LineWidth', 0.9, 'HandleVisibility', 'off');
-        plot(ax, t_env, base - std_env, ':', 'Color', [0.35, 0.35, 0.35], ...
+        plot(ax, t_env_ps, base - std_env, ':', 'Color', [0.35, 0.35, 0.35], ...
              'LineWidth', 0.9, 'HandleVisibility', 'off');
     end
     ylim(ax, [-1.5, 1.5]);
-    xlabel(ax, 'Time (s)');
+    xlabel(ax, 'Time (ps)');
     ylabel(ax, '$\bar{L}_z / \hbar$', 'Interpreter', 'latex');
     set(ax, 'FontSize', 18, 'Box', 'on', 'LineWidth', 1.0);
-    ax.XAxis.Exponent = -12;
+    ax.XAxis.Exponent = 0;
     ax.XLabel.FontSize = 20;
     ax.YLabel.FontSize = 20;
     lg = legend(ax, 'Interpreter', 'latex', 'Box', 'off', 'FontSize', 16);
